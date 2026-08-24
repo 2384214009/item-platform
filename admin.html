@@ -144,19 +144,151 @@
         .badge-sellout{background:var(--danger);}
         .badge-sale{background:var(--success);}
 
-        /* 订单项 */
-        .order-item{
-            padding:14px 0;border-bottom:1px solid #f3f4f6;
+        /* 订单筛选标签 */
+        .order-filter{
+            display:flex;gap:10px;margin-bottom:16px;
         }
-        .order-item:last-child{border-bottom:none;}
-        .order-item-header{font-weight:600;font-size:14px;margin-bottom:8px;}
-        .order-item-detail{font-size:13px;color:var(--text-secondary);line-height:1.8;}
-        .order-item-detail > div{padding:2px 0;}
-        .order-items-list{
-            background:var(--bg);border-radius:var(--radius-sm);
-            padding:8px 12px;margin:8px 0;font-size:13px;
+        .order-filter-btn{
+            padding:10px 22px;border-radius:24px;border:1.5px solid var(--border);
+            background:var(--card);font-size:15px;font-weight:500;cursor:pointer;
+            color:var(--text-secondary);transition:all 0.2s;font-family:inherit;
         }
-        .order-items-list > div{padding:2px 0;color:var(--text-secondary);}
+        .order-filter-btn:hover{border-color:var(--primary);color:var(--primary);}
+        .order-filter-btn.active{
+            background:var(--primary);color:#fff;border-color:transparent;
+            box-shadow:0 4px 12px rgba(46,180,168,0.25);
+        }
+        /* 订单卡片 - 飞书版风格 */
+        .order-card{
+            background:var(--card);border-radius:20px;padding:18px;
+            margin-bottom:14px;box-shadow:var(--shadow-sm);
+            border:1px solid var(--border);position:relative;
+        }
+        .order-card-header{
+            display:flex;justify-content:space-between;align-items:flex-start;
+            margin-bottom:10px;
+        }
+        .order-no{font-size:15px;font-weight:600;color:var(--text-secondary);letter-spacing:0.5px;}
+        .order-status{
+            padding:5px 14px;border-radius:14px;font-size:13px;font-weight:600;
+        }
+        .order-status.pending{background:#fff3e0;color:#e65100;}
+        .order-status.done{background:#e8f5e9;color:#2e7d32;}
+        .order-device{font-size:13px;color:var(--text-muted);margin-bottom:12px;}
+        .order-items-box{
+            background:var(--bg);border-radius:14px;padding:12px 14px;margin-bottom:12px;
+        }
+        .order-items-title{font-size:13px;color:var(--text-secondary);margin-bottom:8px;font-weight:500;}
+        .order-item-row{
+            display:flex;justify-content:space-between;align-items:center;
+            padding:4px 0;font-size:14px;
+        }
+        .order-item-name{font-weight:600;color:var(--text);}
+        .order-item-price{color:var(--text-muted);font-size:13px;}
+        .order-total-row{
+            display:flex;justify-content:space-between;align-items:center;
+            padding-top:10px;border-top:1px dashed var(--border);margin-top:8px;
+        }
+        .order-total-label{font-size:15px;color:var(--text-secondary);font-weight:500;}
+        .order-total-value{font-size:24px;font-weight:700;color:var(--primary);}
+        .order-contact-box{
+            padding-top:12px;border-top:1px solid var(--border);margin-top:12px;
+        }
+        .order-contact-row{
+            display:flex;align-items:flex-start;gap:10px;padding:5px 0;
+            font-size:14px;
+        }
+        .order-contact-icon{
+            width:20px;height:20px;flex-shrink:0;color:var(--primary);
+            display:flex;align-items:center;justify-content:center;
+        }
+        .order-contact-label{color:var(--text-secondary);min-width:60px;}
+        .order-contact-value{color:var(--text);font-weight:500;flex:1;word-break:break-all;}
+        .order-time{font-size:13px;color:var(--text-muted);margin-top:10px;display:flex;align-items:center;gap:6px;}
+        .order-action-btn{
+            width:100%;padding:13px;border:none;border-radius:14px;
+            background:var(--primary);color:#fff;font-size:15px;font-weight:600;
+            cursor:pointer;transition:all 0.15s;margin-top:14px;
+            display:flex;align-items:center;justify-content:center;gap:6px;
+        }
+        .order-action-btn:hover{background:var(--primary-dark);}
+        .order-action-btn:active{transform:scale(0.98);}
+        .order-action-btn.restore{background:#fff3e0;color:#e65100;}
+        .order-action-btn.restore:hover{background:#ffe0b2;}
+        /* 订单详情页 */
+        .order-detail-modal{
+            position:fixed;inset:0;background:var(--bg);z-index:200;
+            display:none;overflow-y:auto;
+        }
+        .order-detail-modal.show{display:block;animation:slideInRight 0.3s ease;}
+        @keyframes slideInRight{from{transform:translateX(100%);}to{transform:translateX(0);}}
+        .order-detail-header{
+            padding:20px 16px 16px;max-width:560px;margin:0 auto;
+            display:flex;align-items:center;gap:12px;
+        }
+        .order-detail-back{
+            width:40px;height:40px;border-radius:50%;background:var(--card);
+            border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;
+            box-shadow:var(--shadow-sm);flex-shrink:0;
+        }
+        .order-detail-title{flex:1;}
+        .order-detail-no{font-size:18px;font-weight:700;color:var(--text);}
+        .order-detail-time{font-size:13px;color:var(--text-muted);margin-top:2px;}
+        .order-detail-content{
+            max-width:560px;margin:0 auto;padding:0 16px 100px;
+        }
+        .order-detail-card{
+            background:var(--card);border-radius:20px;padding:18px;
+            margin-bottom:14px;box-shadow:var(--shadow-sm);
+        }
+        .order-detail-card h3{font-size:17px;font-weight:700;margin-bottom:14px;color:var(--text);}
+        .order-detail-item{
+            display:flex;align-items:center;gap:12px;padding:10px 0;
+            border-bottom:1px solid #f3f4f6;
+        }
+        .order-detail-item:last-child{border-bottom:none;}
+        .order-detail-item-img{
+            width:60px;height:60px;border-radius:12px;object-fit:cover;flex-shrink:0;
+            background:var(--bg);
+        }
+        .order-detail-item-info{flex:1;}
+        .order-detail-item-name{font-size:16px;font-weight:600;color:var(--text);margin-bottom:4px;}
+        .order-detail-item-qty{font-size:13px;color:var(--text-secondary);}
+        .order-detail-item-price{font-size:14px;color:var(--text-muted);font-weight:500;}
+        .order-detail-total{
+            display:flex;justify-content:space-between;align-items:center;
+            padding-top:14px;border-top:1px dashed var(--border);margin-top:10px;
+        }
+        .order-detail-total-label{font-size:16px;color:var(--text-secondary);font-weight:500;}
+        .order-detail-total-value{font-size:28px;font-weight:700;color:var(--primary);}
+        .order-detail-contact-row{
+            display:flex;align-items:flex-start;gap:12px;padding:8px 0;
+        }
+        .order-detail-contact-icon{
+            width:24px;height:24px;flex-shrink:0;color:var(--primary);
+            display:flex;align-items:center;justify-content:center;
+        }
+        .order-detail-contact-label{color:var(--text-secondary);min-width:70px;font-size:14px;padding-top:2px;}
+        .order-detail-contact-value{color:var(--text);font-weight:500;font-size:15px;flex:1;word-break:break-all;}
+        .order-detail-footer{
+            position:fixed;bottom:0;left:50%;transform:translateX(-50%);
+            width:100%;max-width:560px;background:var(--card);padding:12px 16px;
+            border-top:1px solid var(--border);display:flex;gap:10px;
+            padding-bottom:calc(12px + env(safe-area-inset-bottom));
+        }
+        .order-detail-footer button{
+            flex:1;padding:13px;border-radius:14px;font-size:15px;font-weight:600;
+            cursor:pointer;transition:all 0.15s;border:none;
+        }
+        .order-detail-footer .btn-outline{
+            background:#fff;border:2px solid var(--primary);color:var(--primary);
+        }
+        .order-detail-footer .btn-outline:hover{background:var(--primary-light);}
+        .order-detail-footer .btn-solid{
+            background:var(--primary);color:#fff;
+        }
+        .order-detail-footer .btn-solid:hover{background:var(--primary-dark);}
+        .order-detail-footer button:active{transform:scale(0.98);}
 
         /* 复选框行 */
         .check-row{
@@ -245,7 +377,12 @@
             <div id="goodsWrap"></div>
         </div>
         <div class="panel" id="order">
-            <h3>用户提交记录 <span id="orderBadge"></span></h3>
+            <h3>提交记录 <span id="orderBadge"></span></h3>
+            <div class="order-filter">
+                <button class="order-filter-btn active" onclick="filterOrders('all',this)">全部</button>
+                <button class="order-filter-btn" onclick="filterOrders('pending',this)">待处理</button>
+                <button class="order-filter-btn" onclick="filterOrders('done',this)">已处理</button>
+            </div>
             <div id="orderWrap"></div>
         </div>
         <div class="panel" id="bulletinTab">
@@ -460,32 +597,106 @@
             document.querySelector('.tab-btn[onclick*="addGoods"]').click();
         }
         window.delItem=function(id){if(!confirm("确认删除该物品吗？"))return;const db=getDb();db.goods=db.goods.filter(x=>x.id!==id);saveDb(db);renderGoods();}
+        let currentOrderFilter="all";
         function renderOrders(){
             const db=getDb();const wrap=document.getElementById("orderWrap");wrap.innerHTML="";
             const pendingCount=db.orders.filter(o=>o.status==="pending").length;
             document.getElementById("orderBadge").innerText=pendingCount>0?`【待处理:${pendingCount}】`:"";
-            if(db.orders.length===0){wrap.innerHTML='<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">暂无提交记录</div></div>';return;}
-            db.orders.forEach(o=>{
-                let itemHtml="";o.items.forEach(it=>itemHtml+=`<div>• ${it.goodsName} ×${it.qty}  <span style="float:right">${it.sub}</span></div>`);
+            let orders=db.orders;
+            if(currentOrderFilter==="pending") orders=orders.filter(o=>o.status==="pending");
+            if(currentOrderFilter==="done") orders=orders.filter(o=>o.status==="done");
+            if(orders.length===0){wrap.innerHTML='<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">暂无提交记录</div></div>';return;}
+            orders.forEach(o=>{
+                let itemHtml="";
+                o.items.forEach(it=>{
+                    itemHtml+=`<div class="order-item-row"><span class="order-item-name">${it.goodsName} ×${it.qty}</span><span class="order-item-price">编号 ${it.sub}</span></div>`;
+                });
+                const statusClass=o.status==="pending"?"pending":"done";
+                const statusText=o.status==="pending"?"待处理":"已处理";
                 wrap.innerHTML+=`
-                <div class="order-item">
-                    <div class="order-item-header">记录编号：${o.orderNo} ${o.status==="pending"?'<span class="badge badge-pending">待处理</span>':'<span class="badge badge-done">已处理</span>'}</div>
-                    <div class="order-item-detail">
-                        <div>客户设备：${o.deviceId.substring(0,12)}...</div>
-                        <div class="order-items-list">${itemHtml}<div style="border-top:1px dashed var(--border);margin-top:6px;padding-top:6px;font-weight:600;color:var(--text)">合计：${o.total}</div></div>
-                        <div>姓名：${o.userName}｜电话：${o.userPhone}</div>
-                        <div>联系地址：${o.userAddr}</div>
-                        <div>备注：${o.note||"无"}</div>
-                        <div class="small-tip">提交时间：${o.createTime}</div>
+                <div class="order-card" onclick="showOrderDetail('${o.orderNo}')">
+                    <div class="order-card-header">
+                        <span class="order-no">${o.orderNo}</span>
+                        <span class="order-status ${statusClass}">${statusText}</span>
                     </div>
-                    <div style="margin-top:10px;">
-                        ${o.status==='pending'?`<button class="ok" onclick="setOrderDone('${o.orderNo}')">标记已处理</button>`:`<button class="warning" onclick="setOrderPending('${o.orderNo}')">恢复待处理</button>`}
+                    <div class="order-device">设备ID：${o.deviceId.substring(0,12)}...</div>
+                    <div class="order-items-box">
+                        <div class="order-items-title">物品明细（${o.items.length}种）</div>
+                        ${itemHtml}
+                        <div class="order-total-row"><span class="order-total-label">合计</span><span class="order-total-value">${o.total}</span></div>
                     </div>
+                    <div class="order-contact-box">
+                        <div class="order-contact-row"><span class="order-contact-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span><span class="order-contact-value">${o.userName}</span></div>
+                        <div class="order-contact-row"><span class="order-contact-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span><span class="order-contact-value">${o.userPhone}</span></div>
+                        <div class="order-contact-row"><span class="order-contact-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></span><span class="order-contact-value">${o.userAddr}</span></div>
+                        <div class="order-contact-row"><span class="order-contact-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span><span class="order-contact-value">${o.note||"无"}</span></div>
+                    </div>
+                    <div class="order-time"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${o.createTime}</div>
+                    <button class="order-action-btn ${o.status==='done'?'restore':''}" onclick="event.stopPropagation();toggleOrderStatus('${o.orderNo}')">
+                        ${o.status==='pending'?'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>标记已处理':'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>恢复待处理'}
+                    </button>
                 </div>`;
             });
         }
-        window.setOrderDone=function(ordNo){const db=getDb();const o=db.orders.find(x=>x.orderNo===ordNo);o.status="done";saveDb(db);renderOrders();}
-        window.setOrderPending=function(ordNo){const db=getDb();const o=db.orders.find(x=>x.orderNo===ordNo);o.status="pending";saveDb(db);renderOrders();}
+        window.filterOrders=function(type,btn){
+            currentOrderFilter=type;
+            document.querySelectorAll(".order-filter-btn").forEach(b=>b.classList.remove("active"));
+            btn.classList.add("active");
+            renderOrders();
+        }
+        window.toggleOrderStatus=function(ordNo){
+            const db=getDb();const o=db.orders.find(x=>x.orderNo===ordNo);
+            o.status=o.status==="pending"?"done":"pending";
+            saveDb(db);renderOrders();
+        }
+        let currentDetailOrderNo=null;
+        window.showOrderDetail=function(ordNo){
+            const db=getDb();const o=db.orders.find(x=>x.orderNo===ordNo);
+            if(!o) return;
+            currentDetailOrderNo=ordNo;
+            document.getElementById("detailOrderNo").innerText=o.orderNo;
+            document.getElementById("detailOrderTime").innerText="提交时间："+o.createTime;
+            const statusEl=document.getElementById("detailOrderStatus");
+            statusEl.className="order-status "+(o.status==="pending"?"pending":"done");
+            statusEl.innerText=o.status==="pending"?"待处理":"已处理";
+            let itemsHtml="";
+            o.items.forEach(it=>{
+                const goods=db.goods.find(g=>g.name===it.goodsName);
+                const imgSrc=goods?goods.img:"";
+                itemsHtml+=`
+                <div class="order-detail-item">
+                    ${imgSrc?`<img class="order-detail-item-img" src="${imgSrc}" alt="${it.goodsName}">`:''}
+                    <div class="order-detail-item-info">
+                        <div class="order-detail-item-name">${it.goodsName}</div>
+                        <div class="order-detail-item-qty">数量：${it.qty}件</div>
+                    </div>
+                    <div class="order-detail-item-price">编号 ${it.sub}</div>
+                </div>`;
+            });
+            document.getElementById("detailItems").innerHTML=itemsHtml;
+            document.getElementById("detailTotal").innerText=o.total;
+            document.getElementById("detailUserName").innerText=o.userName;
+            document.getElementById("detailUserPhone").innerText=o.userPhone;
+            document.getElementById("detailUserAddr").innerText=o.userAddr;
+            document.getElementById("detailNote").innerText=o.note||"无";
+            const actionBtn=document.getElementById("detailActionBtn");
+            actionBtn.innerText=o.status==="pending"?"标记已处理":"恢复待处理";
+            document.getElementById("orderDetailModal").classList.add("show");
+            document.body.style.overflow="hidden";
+        }
+        window.closeOrderDetail=function(){
+            document.getElementById("orderDetailModal").classList.remove("show");
+            document.body.style.overflow="";
+            currentDetailOrderNo=null;
+        }
+        window.detailToggleStatus=function(){
+            if(!currentDetailOrderNo) return;
+            const db=getDb();const o=db.orders.find(x=>x.orderNo===currentDetailOrderNo);
+            o.status=o.status==="pending"?"done":"pending";
+            saveDb(db);
+            showOrderDetail(currentDetailOrderNo);
+            renderOrders();
+        }
         function addBulletin(){
             const db=getDb();const content=document.getElementById("bulletinContent").value.trim();
             const enable=document.getElementById("bulletinEnable").checked;
@@ -511,5 +722,63 @@
             });
         }
     </script>
+    <!-- 订单详情页 -->
+    <div class="order-detail-modal" id="orderDetailModal">
+        <div class="order-detail-header">
+            <button class="order-detail-back" onclick="closeOrderDetail()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            </button>
+            <div class="order-detail-title">
+                <div class="order-detail-no" id="detailOrderNo"></div>
+                <div class="order-detail-time" id="detailOrderTime"></div>
+            </div>
+            <span class="order-status" id="detailOrderStatus"></span>
+        </div>
+        <div class="order-detail-content">
+            <div class="order-detail-card">
+                <h3>物品明细</h3>
+                <div id="detailItems"></div>
+                <div class="order-detail-total">
+                    <span class="order-detail-total-label">合计</span>
+                    <span class="order-detail-total-value" id="detailTotal"></span>
+                </div>
+            </div>
+            <div class="order-detail-card">
+                <h3>收货人信息</h3>
+                <div class="order-detail-contact-row">
+                    <div class="order-detail-contact-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    </div>
+                    <span class="order-detail-contact-label">收货人</span>
+                    <span class="order-detail-contact-value" id="detailUserName"></span>
+                </div>
+                <div class="order-detail-contact-row">
+                    <div class="order-detail-contact-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                    </div>
+                    <span class="order-detail-contact-label">联系电话</span>
+                    <span class="order-detail-contact-value" id="detailUserPhone"></span>
+                </div>
+                <div class="order-detail-contact-row">
+                    <div class="order-detail-contact-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                    </div>
+                    <span class="order-detail-contact-label">联系地址</span>
+                    <span class="order-detail-contact-value" id="detailUserAddr"></span>
+                </div>
+                <div class="order-detail-contact-row">
+                    <div class="order-detail-contact-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                    </div>
+                    <span class="order-detail-contact-label">备注</span>
+                    <span class="order-detail-contact-value" id="detailNote"></span>
+                </div>
+            </div>
+        </div>
+        <div class="order-detail-footer" id="detailFooter">
+            <button class="btn-outline" onclick="closeOrderDetail()">返回列表</button>
+            <button class="btn-solid" id="detailActionBtn" onclick="detailToggleStatus()"></button>
+        </div>
+    </div>
 </body>
 </html>
