@@ -271,7 +271,7 @@ function getDb(){
 function saveDb(db){ try{ var dbCopy=JSON.parse(JSON.stringify(db)); dbCopy.goods.forEach(function(g){if(g.img&&g.img.indexOf('data:image')===0){var key='img_'+g.id;idbSave(key,g.img);g.img='idb://'+key;}}); localStorage.setItem('shop_db', JSON.stringify(dbCopy)); }catch(e){ if(e.name==='QuotaExceededError'||e.code===22){ showToast('存储空间不足，请在管理后台删除部分旧物品或订单后重试'); }else{ showToast('保存失败'); } throw e; } }
 function getGrad(catId){ if(catId==='aixi')return'grad-1'; if(catId==='alishan')return'grad-2'; if(catId==='baile')return'grad-3'; return'grad-0'; }
 function getCatName(catId){ var db=getDb(); var c=db.categories.find(function(x){return x.id===catId;}); return c?c.name:''; }
-function getGoodsById(id){ var db=getDb(); return db.goods.find(function(g){return g.id===id;}); }
+function getGoodsById(id){ var db=getDb(); return db.goods.find(function(g){return g.id==id;}); }
 function getGoodsByName(name){ var db=getDb(); return db.goods.find(function(g){return g.name===name;}); }
 function showToast(msg){ var t=document.getElementById('toast'); t.innerText=msg; t.className='toast show'; setTimeout(function(){t.className='toast';},2000); }
 function codeToNum(code){ if(!code)return 0; var n=parseFloat(String(code).replace(/[^0-9]/g,'')); return isNaN(n)?0:n; }
@@ -331,13 +331,13 @@ function addDetailToCart(){ if(curDetailId){ addToCart(curDetailId,detailQty); c
 function detailToOrder(){ if(curDetailId){ addToCart(curDetailId,detailQty); closeDetail(); openOrderForm(); } }
 function addToCart(id,qty){
   qty=qty||1; var g=getGoodsById(id); if(!g)return; var db=getDb();
-  var exist=db.cart.find(function(c){return c.goodsId===id;});
+  var exist=db.cart.find(function(c){return c.goodsId==id;});
   if(exist){ exist.qty+=qty; } else { db.cart.push({goodsId:id,name:g.name,code:g.code,catId:g.catId,img:g.img,qty:qty}); }
   saveDb(db); refreshBadge(); showToast('已加入清单');
 }
 function changeCartQty(id,d){
-  var db=getDb(); var item=db.cart.find(function(c){return c.goodsId===id;}); if(!item)return;
-  item.qty+=d; if(item.qty<=0){ db.cart=db.cart.filter(function(c){return c.goodsId!==id;}); }
+  var db=getDb(); var item=db.cart.find(function(c){return c.goodsId==id;}); if(!item)return;
+  item.qty+=d; if(item.qty<=0){ db.cart=db.cart.filter(function(c){return c.goodsId!=id;}); }
   saveDb(db); renderCart(); refreshBadge();
 }
 function refreshBadge(){
