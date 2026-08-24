@@ -252,10 +252,12 @@ var DEFAULT = {
   cart: [], orders: [],
   adminAccounts: [{username:'2384214009',pwd:'13727733582q',role:'super'},{username:'admin',pwd:'admin123',role:'normal'}]
 };
+var dbRawCache=null;
 function getDb(){
   try{
-    var raw = localStorage.getItem('shop_db');
-    if(!raw){ localStorage.setItem('shop_db', JSON.stringify(DEFAULT)); return JSON.parse(JSON.stringify(DEFAULT)); }
+    var raw = dbRawCache!==null?dbRawCache:localStorage.getItem('shop_db');
+    if(!raw){ var defStr=JSON.stringify(DEFAULT); localStorage.setItem('shop_db', defStr); dbRawCache=defStr; return JSON.parse(JSON.stringify(DEFAULT)); }
+    if(dbRawCache===null)dbRawCache=raw;
     var db = JSON.parse(raw); var changed = false;
     if(!Array.isArray(db.goods) || db.goods.length === 0){ db.goods = JSON.parse(JSON.stringify(DEFAULT.goods)); changed = true; }
     if(!Array.isArray(db.categories) || db.categories.length === 0){ db.categories = JSON.parse(JSON.stringify(DEFAULT.categories)); changed = true; }
@@ -268,7 +270,7 @@ function getDb(){
     return db;
   }catch(e){ localStorage.setItem('shop_db', JSON.stringify(DEFAULT)); return JSON.parse(JSON.stringify(DEFAULT)); }
 }
-function saveDb(db){ try{ var dbCopy=JSON.parse(JSON.stringify(db)); dbCopy.goods.forEach(function(g){if(g.img&&g.img.indexOf('data:image')===0){var key='img_'+g.id;idbSave(key,g.img);g.img='idb://'+key;}}); localStorage.setItem('shop_db', JSON.stringify(dbCopy)); }catch(e){ if(e.name==='QuotaExceededError'||e.code===22){ showToast('存储空间不足，请在管理后台删除部分旧物品或订单后重试'); }else{ showToast('保存失败'); } throw e; } }
+function saveDb(db){ try{ var dbCopy=JSON.parse(JSON.stringify(db)); dbCopy.goods.forEach(function(g){if(g.img&&g.img.indexOf('data:image')===0){var key='img_'+g.id;idbSave(key,g.img);g.img='idb://'+key;}}); var str=JSON.stringify(dbCopy); localStorage.setItem('shop_db', str); dbRawCache=str; }catch(e){ if(e.name==='QuotaExceededError'||e.code===22){ showToast('存储空间不足，请在管理后台删除部分旧物品或订单后重试'); }else{ showToast('保存失败'); } throw e; } }
 function getGrad(catId){ if(catId==='aixi')return'grad-1'; if(catId==='alishan')return'grad-2'; if(catId==='baile')return'grad-3'; return'grad-0'; }
 function getCatName(catId){ var db=getDb(); var c=db.categories.find(function(x){return x.id===catId;}); return c?c.name:''; }
 function getGoodsById(id){ var db=getDb(); return db.goods.find(function(g){return g.id==id;}); }
@@ -293,7 +295,8 @@ function renderCats(){
     wrap.appendChild(el);
   });
 }
-function onSearch(val){ searchKey=val.trim().toLowerCase(); renderGoods(); }
+var searchTimer=null;
+function onSearch(val){ searchKey=val.trim().toLowerCase(); if(searchTimer)clearTimeout(searchTimer); searchTimer=setTimeout(function(){ renderGoods(); },300); }
 function renderGoods(){
   var db=getDb(); var wrap=document.getElementById('goodsGrid'); wrap.innerHTML='';
   var list=db.goods;
