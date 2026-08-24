@@ -686,15 +686,15 @@ function submitAllOrder(){
         if(!g) return;
         const subtotal=Number(g.price)*item.qty;
         total+=subtotal;
-        items.push({name:g.name,qty:item.qty,price:g.price,subtotal});
+        items.push({goodsName:g.name,qty:item.qty,price:g.price,sub:subtotal});
     });
     const order={
-        id:"ord_"+Date.now(),
+        orderNo:"ord_"+Date.now(),
         deviceId:deviceId,
-        name:name,phone:phone,addr:addr,note:note,
+        userName:name,userPhone:phone,userAddr:addr,note:note,
         items:items,total:total,
-        createdAt:new Date().toLocaleString("zh-CN"),
-        status:"待处理"
+        createTime:new Date().toLocaleString("zh-CN"),
+        status:"pending"
     };
     db.orders.unshift(order);
     saveDb(db);
@@ -791,7 +791,28 @@ function openMyOrder(){
     document.addEventListener("touchmove",onMove,{passive:false});
     document.addEventListener("touchend",onEnd);
 })();
+/* 数据迁移：旧字段名转新字段名，兼容历史订单 */
+function migrateOrders(){
+    const db=getDb();
+    let changed=false;
+    db.orders.forEach(o=>{
+        if(o.id&&!o.orderNo){o.orderNo=o.id;delete o.id;changed=true;}
+        if(o.name&&!o.userName){o.userName=o.name;delete o.name;changed=true;}
+        if(o.phone&&!o.userPhone){o.userPhone=o.phone;delete o.phone;changed=true;}
+        if(o.addr&&!o.userAddr){o.userAddr=o.addr;delete o.addr;changed=true;}
+        if(o.createdAt&&!o.createTime){o.createTime=o.createdAt;delete o.createdAt;changed=true;}
+        if(o.status==="待处理"){o.status="pending";changed=true;}
+        if(o.items){
+            o.items.forEach(it=>{
+                if(it.name&&!it.goodsName){it.goodsName=it.name;delete it.name;changed=true;}
+                if(it.subtotal!==undefined&&it.sub===undefined){it.sub=it.subtotal;delete it.subtotal;changed=true;}
+            });
+        }
+    });
+    if(changed) saveDb(db);
+}
 /* 初始化 */
+migrateOrders();
 renderBulletin();
 renderCats();
 renderGoods();
