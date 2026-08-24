@@ -1,787 +1,231 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>物品管理后台</title>
-    <style>
-        * {margin:0;padding:0;box-sizing:border-box;}
-        :root{
-            --primary:#2EB4A8;
-            --primary-light:#e8f6f5;
-            --primary-dark:#239a8f;
-            --bg:#f5f7f8;
-            --card:#ffffff;
-            --text:#1a1a1a;
-            --text-secondary:#6b7280;
-            --text-muted:#9ca3af;
-            --border:#e5e7eb;
-            --danger:#ef4444;
-            --danger-light:#fef2f2;
-            --warn:#f59e0b;
-            --warn-light:#fffbeb;
-            --success:#10b981;
-            --success-light:#ecfdf5;
-            --radius-sm:8px;
-            --radius-md:12px;
-            --radius-lg:16px;
-            --shadow-sm:0 1px 3px rgba(0,0,0,0.06);
-            --shadow-md:0 4px 12px rgba(0,0,0,0.08);
-        }
-        html,body{
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "微软雅黑", sans-serif;
-            background:var(--bg);
-            color:var(--text);
-            line-height:1.5;
-            -webkit-font-smoothing:antialiased;
-        }
-        body{padding:16px;min-height:100vh;max-width:560px;margin:0 auto;}
-
-        /* 登录页 */
-        .login-box{
-            max-width:400px;margin:40px auto;
-            background:var(--card);padding:28px 24px;
-            border-radius:var(--radius-lg);
-            box-shadow:var(--shadow-md);
-            border:1px solid var(--border);
-        }
-        .login-header{text-align:center;margin-bottom:24px;}
-        .login-icon{
-            width:56px;height:56px;border-radius:16px;
-            background:linear-gradient(135deg,var(--primary),var(--primary-dark));
-            display:flex;align-items:center;justify-content:center;
-            font-size:28px;margin:0 auto 12px;
-            box-shadow:0 4px 12px rgba(46,180,168,0.3);
-        }
-        h2{color:var(--text);text-align:center;margin-bottom:4px;font-size:20px;font-weight:700;}
-        .login-subtitle{text-align:center;color:var(--text-muted);font-size:13px;margin-bottom:20px;}
-        h3{font-size:16px;margin-bottom:12px;color:var(--text);font-weight:700;}
-        h4{font-size:14px;margin:14px 0 8px;color:var(--text-secondary);font-weight:600;}
-
-        /* 标签页 */
-        .tab{
-            display:flex;flex-wrap:wrap;gap:6px;
-            margin-bottom:16px;background:var(--card);
-            padding:8px;border-radius:var(--radius-md);
-            border:1px solid var(--border);
-        }
-        .tab-btn{
-            flex:1 1 auto;min-width:70px;
-            padding:9px 8px;border:none;border-radius:var(--radius-sm);
-            background:transparent;font-size:12px;cursor:pointer;
-            color:var(--text-secondary);transition:all 0.2s;
-            font-weight:500;font-family:inherit;
-        }
-        .tab-btn:hover{background:var(--bg);color:var(--text);}
-        .tab-btn.active{background:var(--primary);color:#fff;box-shadow:0 2px 8px rgba(46,180,168,0.25);}
-
-        /* 面板 */
-        .panel{
-            display:none;background:var(--card);
-            padding:18px;border-radius:var(--radius-md);
-            margin-bottom:14px;border:1px solid var(--border);
-            box-shadow:var(--shadow-sm);
-        }
-        .panel.show{display:block;animation:fadeIn 0.25s ease;}
-        @keyframes fadeIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
-
-        /* 表单 */
-        input,textarea,select{
-            width:100%;padding:11px 14px;margin:8px 0;
-            border:1px solid var(--border);border-radius:var(--radius-sm);
-            font-size:14px;background:var(--card);outline:none;
-            transition:all 0.2s;font-family:inherit;color:var(--text);
-        }
-        input:focus,textarea:focus,select:focus{
-            border-color:var(--primary);
-            box-shadow:0 0 0 3px rgba(46,180,168,0.1);
-        }
-        textarea{resize:vertical;min-height:70px;}
-        input[type="file"]{padding:8px;border:1px dashed var(--border);background:var(--bg);cursor:pointer;}
-        input[type="file"]:hover{border-color:var(--primary);}
-
-        /* 按钮 */
-        button{
-            padding:10px 16px;border:none;border-radius:var(--radius-sm);
-            margin:4px 4px 4px 0;font-size:13px;cursor:pointer;
-            transition:all 0.15s;font-weight:600;font-family:inherit;
-        }
-        button:hover{transform:translateY(-1px);}
-        button:active{transform:translateY(0);}
-        .primary{background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;box-shadow:0 2px 8px rgba(46,180,168,0.25);}
-        .primary:hover{box-shadow:0 4px 12px rgba(46,180,168,0.35);}
-        .danger{background:var(--danger-light);color:var(--danger);}
-        .danger:hover{background:var(--danger);color:#fff;}
-        .warning{background:var(--warn-light);color:var(--warn);}
-        .warning:hover{background:var(--warn);color:#fff;}
-        .ok{background:var(--success-light);color:var(--success);}
-        .ok:hover{background:var(--success);color:#fff;}
-
-        /* 物品项 */
-        .goods-item{
-            padding:14px 0;border-bottom:1px solid #f3f4f6;
-        }
-        .goods-item:last-child{border-bottom:none;}
-        .goods-item-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;}
-        .goods-item-name{font-weight:600;font-size:15px;}
-        .goods-item-desc{font-size:13px;color:var(--text-secondary);margin:6px 0;line-height:1.5;}
-        .goods-item-actions{margin-top:8px;}
-
-        /* 图片预览 */
-        .preview-img{
-            max-width:100%;max-height:200px;margin:10px 0;
-            display:none;border-radius:var(--radius-sm);
-            border:1px solid var(--border);object-fit:cover;
-        }
-
-        /* 徽章 */
-        .badge{
-            display:inline-block;font-size:11px;padding:3px 8px;
-            border-radius:10px;color:#fff;margin:0 4px;font-weight:600;
-        }
-        .badge-pending{background:var(--warn);}
-        .badge-done{background:var(--success);}
-        .badge-sellout{background:var(--danger);}
-        .badge-sale{background:var(--success);}
-
-        /* 订单筛选标签 */
-        .order-filter{
-            display:flex;gap:10px;margin-bottom:16px;
-        }
-        .order-filter-btn{
-            padding:10px 22px;border-radius:24px;border:1.5px solid var(--border);
-            background:var(--card);font-size:15px;font-weight:500;cursor:pointer;
-            color:var(--text-secondary);transition:all 0.2s;font-family:inherit;
-        }
-        .order-filter-btn:hover{border-color:var(--primary);color:var(--primary);}
-        .order-filter-btn.active{
-            background:var(--primary);color:#fff;border-color:transparent;
-            box-shadow:0 4px 12px rgba(46,180,168,0.25);
-        }
-        /* 订单卡片 - 飞书版风格 */
-        .order-card{
-            background:var(--card);border-radius:20px;padding:18px;
-            margin-bottom:14px;box-shadow:var(--shadow-sm);
-            border:1px solid var(--border);position:relative;
-        }
-        .order-card-header{
-            display:flex;justify-content:space-between;align-items:flex-start;
-            margin-bottom:10px;
-        }
-        .order-no{font-size:15px;font-weight:600;color:var(--text-secondary);letter-spacing:0.5px;}
-        .order-status{
-            padding:5px 14px;border-radius:14px;font-size:13px;font-weight:600;
-        }
-        .order-status.pending{background:#fff3e0;color:#e65100;}
-        .order-status.done{background:#e8f5e9;color:#2e7d32;}
-        .order-device{font-size:13px;color:var(--text-muted);margin-bottom:12px;}
-        .order-items-box{
-            background:var(--bg);border-radius:14px;padding:12px 14px;margin-bottom:12px;
-        }
-        .order-items-title{font-size:13px;color:var(--text-secondary);margin-bottom:8px;font-weight:500;}
-        .order-item-row{
-            display:flex;justify-content:space-between;align-items:center;
-            padding:4px 0;font-size:14px;
-        }
-        .order-item-name{font-weight:600;color:var(--text);}
-        .order-item-price{color:var(--text-muted);font-size:13px;}
-        .order-total-row{
-            display:flex;justify-content:space-between;align-items:center;
-            padding-top:10px;border-top:1px dashed var(--border);margin-top:8px;
-        }
-        .order-total-label{font-size:15px;color:var(--text-secondary);font-weight:500;}
-        .order-total-value{font-size:24px;font-weight:700;color:var(--primary);}
-        .order-contact-box{
-            padding-top:12px;border-top:1px solid var(--border);margin-top:12px;
-        }
-        .order-contact-row{
-            display:flex;align-items:flex-start;gap:10px;padding:5px 0;
-            font-size:14px;
-        }
-        .order-contact-icon{
-            width:20px;height:20px;flex-shrink:0;color:var(--primary);
-            display:flex;align-items:center;justify-content:center;
-        }
-        .order-contact-label{color:var(--text-secondary);min-width:60px;}
-        .order-contact-value{color:var(--text);font-weight:500;flex:1;word-break:break-all;}
-        .order-time{font-size:13px;color:var(--text-muted);margin-top:10px;display:flex;align-items:center;gap:6px;}
-        .order-action-btn{
-            width:100%;padding:13px;border:none;border-radius:14px;
-            background:var(--primary);color:#fff;font-size:15px;font-weight:600;
-            cursor:pointer;transition:all 0.15s;margin-top:14px;
-            display:flex;align-items:center;justify-content:center;gap:6px;
-        }
-        .order-action-btn:hover{background:var(--primary-dark);}
-        .order-action-btn:active{transform:scale(0.98);}
-        .order-action-btn.restore{background:#fff3e0;color:#e65100;}
-        .order-action-btn.restore:hover{background:#ffe0b2;}
-        /* 订单详情页 */
-        .order-detail-modal{
-            position:fixed;inset:0;background:var(--bg);z-index:200;
-            display:none;overflow-y:auto;
-        }
-        .order-detail-modal.show{display:block;animation:slideInRight 0.3s ease;}
-        @keyframes slideInRight{from{transform:translateX(100%);}to{transform:translateX(0);}}
-        .order-detail-header{
-            padding:20px 16px 16px;max-width:560px;margin:0 auto;
-            display:flex;align-items:center;gap:12px;
-        }
-        .order-detail-back{
-            width:40px;height:40px;border-radius:50%;background:var(--card);
-            border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;
-            box-shadow:var(--shadow-sm);flex-shrink:0;
-        }
-        .order-detail-title{flex:1;}
-        .order-detail-no{font-size:18px;font-weight:700;color:var(--text);}
-        .order-detail-time{font-size:13px;color:var(--text-muted);margin-top:2px;}
-        .order-detail-content{
-            max-width:560px;margin:0 auto;padding:0 16px 100px;
-        }
-        .order-detail-card{
-            background:var(--card);border-radius:20px;padding:18px;
-            margin-bottom:14px;box-shadow:var(--shadow-sm);
-        }
-        .order-detail-card h3{font-size:17px;font-weight:700;margin-bottom:14px;color:var(--text);}
-        .order-detail-item{
-            display:flex;align-items:center;gap:12px;padding:10px 0;
-            border-bottom:1px solid #f3f4f6;
-        }
-        .order-detail-item:last-child{border-bottom:none;}
-        .order-detail-item-img{
-            width:60px;height:60px;border-radius:12px;object-fit:cover;flex-shrink:0;
-            background:var(--bg);
-        }
-        .order-detail-item-info{flex:1;}
-        .order-detail-item-name{font-size:16px;font-weight:600;color:var(--text);margin-bottom:4px;}
-        .order-detail-item-qty{font-size:13px;color:var(--text-secondary);}
-        .order-detail-item-price{font-size:14px;color:var(--text-muted);font-weight:500;}
-        .order-detail-total{
-            display:flex;justify-content:space-between;align-items:center;
-            padding-top:14px;border-top:1px dashed var(--border);margin-top:10px;
-        }
-        .order-detail-total-label{font-size:16px;color:var(--text-secondary);font-weight:500;}
-        .order-detail-total-value{font-size:28px;font-weight:700;color:var(--primary);}
-        .order-detail-contact-row{
-            display:flex;align-items:flex-start;gap:12px;padding:8px 0;
-        }
-        .order-detail-contact-icon{
-            width:24px;height:24px;flex-shrink:0;color:var(--primary);
-            display:flex;align-items:center;justify-content:center;
-        }
-        .order-detail-contact-label{color:var(--text-secondary);min-width:70px;font-size:14px;padding-top:2px;}
-        .order-detail-contact-value{color:var(--text);font-weight:500;font-size:15px;flex:1;word-break:break-all;}
-        .order-detail-footer{
-            position:fixed;bottom:0;left:50%;transform:translateX(-50%);
-            width:100%;max-width:560px;background:var(--card);padding:12px 16px;
-            border-top:1px solid var(--border);display:flex;gap:10px;
-            padding-bottom:calc(12px + env(safe-area-inset-bottom));
-        }
-        .order-detail-footer button{
-            flex:1;padding:13px;border-radius:14px;font-size:15px;font-weight:600;
-            cursor:pointer;transition:all 0.15s;border:none;
-        }
-        .order-detail-footer .btn-outline{
-            background:#fff;border:2px solid var(--primary);color:var(--primary);
-        }
-        .order-detail-footer .btn-outline:hover{background:var(--primary-light);}
-        .order-detail-footer .btn-solid{
-            background:var(--primary);color:#fff;
-        }
-        .order-detail-footer .btn-solid:hover{background:var(--primary-dark);}
-        .order-detail-footer button:active{transform:scale(0.98);}
-
-        /* 复选框行 */
-        .check-row{
-            display:flex;align-items:center;gap:8px;
-            margin:10px 0 14px 0;
-        }
-        .check-row input[type="checkbox"]{
-            width:18px;height:18px;margin:0;cursor:pointer;
-            accent-color:var(--primary);
-        }
-        .check-row label{font-size:13px;color:var(--text-secondary);cursor:pointer;}
-
-        /* 提示文字 */
-        .small-tip{font-size:12px;color:var(--text-muted);margin:4px 0;}
-
-        /* 空状态 */
-        .empty-state{text-align:center;padding:30px 20px;color:var(--text-muted);}
-        .empty-state .empty-icon{font-size:36px;margin-bottom:8px;opacity:0.5;}
-        .empty-state .empty-text{font-size:13px;}
-
-        /* 底部操作 */
-        .admin-footer{
-            display:flex;gap:8px;margin-top:16px;
-            padding-top:16px;border-top:1px solid var(--border);
-        }
-        .admin-footer button{flex:1;margin:0;}
-
-        /* 当前账号显示 */
-        .current-admin{
-            background:var(--primary-light);
-            padding:12px 16px;border-radius:var(--radius-sm);
-            margin-bottom:16px;font-size:14px;
-            color:var(--primary-dark);font-weight:600;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>管理后台 - 物品展示选择平台</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;background:#f5f9f8;color:#333;min-height:100vh;}
+:root{--primary:#2eb4a8;--primary-dark:#1a8a7f;--primary-light:#e8f5f3;--bg:#f5f9f8;--card:#fff;--text:#333;--text2:#888;--text3:#bbb;--border:#eef2f1;--danger:#f56c6c;--warning:#e6a23c;--success:#67c23a;--radius:16px;--radius-sm:10px;--radius-btn:24px;}
+.app{max-width:500px;margin:0 auto;min-height:100vh;background:var(--bg);position:relative;padding-bottom:20px;}
+.login-page{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;}
+.login-icon{width:60px;height:60px;border-radius:16px;background:var(--primary-light);display:flex;align-items:center;justify-content:center;margin-bottom:16px;}
+.login-icon svg{width:28px;height:28px;color:var(--primary);}
+.login-title{font-size:22px;font-weight:700;color:var(--primary);margin-bottom:6px;}
+.login-sub{font-size:13px;color:var(--text2);margin-bottom:28px;}
+.login-card{background:#fff;border-radius:var(--radius);padding:24px 20px;width:100%;max-width:360px;box-shadow:0 4px 20px rgba(0,0,0,.06);}
+.form-group{margin-bottom:16px;}
+.form-label{font-size:13px;color:var(--text);margin-bottom:6px;display:block;font-weight:500;}
+.form-input{width:100%;padding:11px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:14px;outline:none;transition:border-color .2s;background:#fff;}
+.form-input:focus{border-color:var(--primary);}
+.form-input-icon{position:relative;}
+.form-input-icon svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--text3);}
+.form-input-icon input{padding-left:36px;}
+.check-row{display:flex;align-items:center;gap:6px;margin-bottom:20px;}
+.check-row input[type=checkbox]{width:16px;height:16px;accent-color:var(--primary);}
+.check-row label{font-size:13px;color:var(--text2);cursor:pointer;}
+.btn-primary{width:100%;padding:12px;border-radius:var(--radius-btn);background:var(--primary);color:#fff;border:none;font-size:15px;font-weight:600;cursor:pointer;transition:opacity .2s;}
+.btn-primary:active{opacity:.85;}
+.login-back{margin-top:20px;font-size:13px;color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:4px;}
+.login-back:hover{color:var(--primary);}
+.admin-head{background:#fff;padding:14px 16px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:50;box-shadow:0 1px 4px rgba(0,0,0,.04);}
+.admin-home{width:36px;height:36px;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;}
+.admin-home svg{width:20px;height:20px;color:var(--text2);}
+.admin-title{flex:1;text-align:center;}
+.admin-title h2{font-size:17px;font-weight:700;color:var(--primary);}
+.admin-user{font-size:12px;color:var(--text2);margin-top:2px;}
+.admin-logout{width:36px;height:36px;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;}
+.admin-logout svg{width:18px;height:18px;color:var(--text2);}
+.tabs{background:#fff;padding:10px 16px;display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid var(--border);}
+.tabs::-webkit-scrollbar{display:none;}
+.tab{flex-shrink:0;padding:8px 16px;border-radius:20px;background:var(--bg);font-size:13px;color:var(--text2);cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:4px;border:none;font-family:inherit;}
+.tab.active{background:var(--primary);color:#fff;box-shadow:0 4px 12px rgba(46,180,168,.25);}
+.tabs-row2{background:#fff;padding:0 16px 10px;display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid var(--border);}
+.tabs-row2::-webkit-scrollbar{display:none;}
+.admin-body{padding:16px;}
+.panel{background:#fff;border-radius:var(--radius);padding:16px;margin-bottom:14px;box-shadow:0 2px 8px rgba(0,0,0,.03);}
+.panel-title{font-size:15px;font-weight:700;margin-bottom:14px;color:var(--text);display:flex;align-items:center;gap:6px;}
+.panel-title svg{width:18px;height:18px;color:var(--primary);}
+.cat-form-row{display:flex;gap:10px;margin-bottom:12px;}
+.cat-form-row .form-input{flex:1;}
+.cat-list-item{display:flex;align-items:center;gap:10px;padding:12px;background:var(--bg);border-radius:var(--radius-sm);margin-bottom:8px;}
+.cat-drag{color:var(--text3);cursor:grab;flex-shrink:0;}
+.cat-name{flex:1;font-size:14px;font-weight:500;}
+.cat-sort{font-size:12px;color:var(--text2);}
+.cat-del{width:30px;height:30px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;border:1px solid var(--border);}
+.cat-del svg{width:14px;height:14px;color:var(--danger);}
+.upload-area{border:2px dashed var(--border);border-radius:var(--radius-sm);padding:30px 20px;text-align:center;cursor:pointer;transition:border-color .2s;background:var(--bg);}
+.upload-area:hover{border-color:var(--primary);}
+.upload-area svg{width:32px;height:32px;color:var(--text3);margin-bottom:8px;}
+.upload-area p{font-size:13px;color:var(--text2);}
+.upload-preview{width:100%;max-height:200px;object-fit:cover;border-radius:var(--radius-sm);margin-bottom:10px;display:none;}
+.switch-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;}
+.switch-label{font-size:14px;color:var(--text);}
+.switch-desc{font-size:12px;color:var(--text2);margin-top:2px;}
+.switch{position:relative;width:44px;height:24px;flex-shrink:0;}
+.switch input{opacity:0;width:0;height:0;}
+.switch-slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#ccc;transition:.3s;border-radius:24px;}
+.switch-slider:before{position:absolute;content:"";height:18px;width:18px;left:3px;bottom:3px;background:#fff;transition:.3s;border-radius:50%;}
+.switch input:checked + .switch-slider{background:var(--primary);}
+.switch input:checked + .switch-slider:before{transform:translateX(20px);}
+.goods-search{margin-bottom:14px;position:relative;}
+.goods-search input{width:100%;padding:11px 14px 11px 38px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:14px;outline:none;background:#fff;}
+.goods-search input:focus{border-color:var(--primary);}
+.goods-search svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:18px;height:18px;color:var(--text3);}
+.goods-row{display:flex;align-items:center;gap:12px;padding:12px;background:#fff;border-radius:var(--radius-sm);margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,.03);}
+.goods-row-img{width:56px;height:56px;border-radius:10px;overflow:hidden;background:#f0f0f0;flex-shrink:0;position:relative;}
+.goods-row-img img{width:100%;height:100%;object-fit:cover;display:block;}
+.goods-row-img .fallback{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;text-align:center;padding:2px;position:absolute;top:0;left:0;}
+.goods-row-info{flex:1;min-width:0;}
+.goods-row-name{font-size:14px;font-weight:600;margin-bottom:4px;display:flex;align-items:center;gap:6px;}
+.goods-row-code{font-size:12px;color:var(--primary);font-weight:600;margin-bottom:2px;}
+.goods-row-cat{font-size:12px;color:var(--text2);}
+.status-badge{padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;flex-shrink:0;}
+.status-badge.normal{background:#f0f9eb;color:var(--success);}
+.status-badge.sellout{background:#fef0f0;color:var(--danger);}
+.goods-row-actions{display:flex;flex-direction:column;gap:6px;flex-shrink:0;}
+.action-btn{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;border:1px solid var(--border);background:#fff;}
+.action-btn svg{width:14px;height:14px;}
+.action-btn.edit svg{color:var(--text2);}
+.action-btn.toggle svg{color:var(--primary);}
+.action-btn.toggle.off svg{color:var(--warning);}
+.action-btn.del{border-color:#fef0f0;}
+.action-btn.del svg{color:var(--danger);}
+.record-filters{display:flex;gap:8px;margin-bottom:14px;}
+.record-filter{padding:7px 18px;border-radius:20px;background:#fff;border:1px solid var(--border);font-size:13px;color:var(--text2);cursor:pointer;transition:all .2s;}
+.record-filter.active{background:var(--primary);color:#fff;border-color:transparent;}
+.record-card{background:#fff;border-radius:var(--radius);padding:14px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,.03);}
+.record-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;}
+.record-no{font-size:13px;font-weight:600;color:var(--text2);letter-spacing:.3px;}
+.record-device{font-size:11px;color:var(--text3);margin-top:2px;}
+.record-items{background:var(--bg);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:10px;}
+.record-item-title{font-size:12px;color:var(--text2);margin-bottom:6px;}
+.record-item-row{display:flex;justify-content:space-between;align-items:center;padding:3px 0;font-size:13px;}
+.record-item-name{color:var(--text);}
+.record-item-code{color:var(--text2);font-size:12px;}
+.record-total{display:flex;justify-content:space-between;align-items:center;padding-top:8px;border-top:1px solid var(--border);margin-bottom:10px;}
+.record-total-label{font-size:13px;color:var(--text2);}
+.record-total-val{font-size:18px;font-weight:700;color:var(--primary);}
+.record-contact{font-size:13px;color:var(--text);line-height:1.8;}
+.record-contact div{display:flex;align-items:center;gap:6px;}
+.record-contact .icon{width:14px;text-align:center;}
+.record-time{font-size:12px;color:var(--text3);margin-top:6px;}
+.record-action-btn{width:100%;padding:10px;border-radius:var(--radius-btn);background:var(--primary);color:#fff;border:none;font-size:14px;font-weight:600;cursor:pointer;margin-top:10px;display:flex;align-items:center;justify-content:center;gap:6px;}
+.record-action-btn.done{background:var(--success);}
+.order-status{padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600;flex-shrink:0;}
+.order-status.pending{background:#fff7e6;color:var(--warning);}
+.order-status.done{background:#f0f9eb;color:var(--success);}
+.bulletin-item{padding:12px 0;border-bottom:1px solid var(--border);}
+.bulletin-item:last-child{border-bottom:none;}
+.bulletin-content{font-size:14px;color:var(--text);margin-bottom:8px;}
+.bulletin-actions{display:flex;gap:8px;}
+.bulletin-btn{padding:5px 12px;border-radius:14px;font-size:12px;cursor:pointer;border:none;font-family:inherit;}
+.bulletin-btn.enable{background:var(--primary-light);color:var(--primary-dark);}
+.bulletin-btn.disable{background:#fff3e0;color:var(--warning);}
+.bulletin-btn.del{background:#fef0f0;color:var(--danger);}
+.pwd-group{margin-bottom:14px;}
+.toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.75);color:#fff;padding:10px 20px;border-radius:8px;font-size:14px;z-index:9999;display:none;max-width:80%;text-align:center;}
+.toast.show{display:block;}
+.empty{text-align:center;padding:40px 20px;}
+.empty-icon{font-size:36px;margin-bottom:10px;opacity:.5;}
+.empty-text{font-size:14px;color:var(--text2);}
+.grad-1{background:linear-gradient(135deg,#667eea,#764ba2)!important;}
+.grad-2{background:linear-gradient(135deg,#f093fb,#f5576c)!important;}
+.grad-3{background:linear-gradient(135deg,#4facfe,#00f2fe)!important;}
+.grad-0{background:linear-gradient(135deg,#a8edea,#fed6e3)!important;}
+</style>
 </head>
 <body>
-    <div class="login-box" id="loginWrap">
-        <div class="login-header">
-            <div class="login-icon">⚙️</div>
-            <h2>管理员登录</h2>
-            <div class="login-subtitle">物品信息登记平台管理后台</div>
-        </div>
-        <input placeholder="管理员账号" id="inpUser" autocapitalize="off" autocomplete="off">
-        <input placeholder="管理员密码" type="password" id="inpPwd" autocapitalize="off" autocomplete="off">
-        <div class="check-row">
-            <input type="checkbox" id="rememberCheck">
-            <label for="rememberCheck">在本设备保存账号密码</label>
-        </div>
-        <button class="primary" style="width:100%;margin:0;padding:13px;font-size:15px;" onclick="doLogin()">登录后台</button>
+<div class="toast" id="toast"></div>
+<div class="login-page" id="loginPage">
+  <div class="login-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+  <div class="login-title">管理后台</div>
+  <div class="login-sub">请使用管理员账号登录</div>
+  <div class="login-card">
+    <div class="form-group"><label class="form-label">账号</label><div class="form-input-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><input type="text" class="form-input" id="loginUser" placeholder="请输入账号"></div></div>
+    <div class="form-group"><label class="form-label">密码</label><div class="form-input-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><input type="password" class="form-input" id="loginPwd" placeholder="请输入密码"></div></div>
+    <div class="check-row"><input type="checkbox" id="rememberCheck"><label for="rememberCheck">在本设备保存账号密码</label></div>
+    <button class="btn-primary" onclick="doLogin()">登录</button>
+  </div>
+  <div class="login-back" onclick="goFront()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>返回前台浏览</div>
+</div>
+<div class="app" id="adminApp" style="display:none;">
+  <div class="admin-head">
+    <div class="admin-home" onclick="goFront()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
+    <div class="admin-title"><h2>管理后台</h2><div class="admin-user" id="adminUser"></div></div>
+    <div class="admin-logout" onclick="doLogout()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></div>
+  </div>
+  <div class="tabs" id="tabsRow1">
+    <button class="tab active" onclick="switchTab('cat')">分类管理</button>
+    <button class="tab" onclick="switchTab('addGoods')">+ 新增物品</button>
+    <button class="tab" onclick="switchTab('goodsList')">物品列表</button>
+    <button class="tab" onclick="switchTab('records')">提交记录</button>
+  </div>
+  <div class="tabs-row2" id="tabsRow2">
+    <button class="tab" onclick="switchTab('bulletin')">公告管理</button>
+    <button class="tab" onclick="switchTab('account')">账号设置</button>
+    <button class="tab super-only" onclick="switchTab('admins')">管理员管理</button>
+  </div>
+  <div class="admin-body">
+    <div id="panel-cat">
+      <div class="panel"><div class="panel-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>新增分类</div><div class="cat-form-row"><input type="text" class="form-input" id="newCatName" placeholder="分类名称"><input type="number" class="form-input" id="newCatSort" placeholder="排序" style="max-width:100px;"></div><button class="btn-primary" onclick="addCat()">+ 新增分类</button></div>
+      <div class="panel"><div class="panel-title" id="catListTitle">分类列表</div><div id="catList"></div></div>
     </div>
-    <div class="admin-wrap" id="adminWrap" style="display:none;">
-        <div class="current-admin">当前账号：<span id="curAdminName"></span></div>
-        <div class="tab">
-            <button class="tab-btn active" onclick="switchTab('catManage',this)">分类管理</button>
-            <button class="tab-btn" onclick="switchTab('addGoods',this)">新增物品</button>
-            <button class="tab-btn" onclick="switchTab('goodsList',this)">物品列表</button>
-            <button class="tab-btn" onclick="switchTab('order',this)">提交记录</button>
-            <button class="tab-btn" onclick="switchTab('bulletinTab',this)">公告管理</button>
-            <button class="tab-btn" onclick="switchTab('setting',this)">账号设置</button>
-            <button class="tab-btn super-only" onclick="switchTab('adminManage',this)" style="display:none;">管理员管理</button>
-        </div>
-        <div class="panel show" id="catManage">
-            <h3>新增物品分类</h3>
-            <input placeholder="分类名称" id="catName">
-            <button class="primary" onclick="addCat()">添加分类</button>
-            <div id="catWrap"></div>
-        </div>
-        <div class="panel" id="addGoods">
-            <h3>添加 / 编辑物品</h3>
-            <input placeholder="物品名称" id="gName">
-            <input placeholder="编号（数字）" id="gPrice">
-            <select id="gCat"></select>
-            <textarea placeholder="物品简介描述" id="gDesc"></textarea>
-            <input type="file" accept="image/*" id="imgUpload">
-            <div class="small-tip">选择本地图片作为封面</div>
-            <img class="preview-img" id="imgPreview">
-            <div class="check-row">
-                <input type="checkbox" id="isSelloutEdit">
-                <label for="isSelloutEdit">标记无库存</label>
-            </div>
-            <button class="primary" onclick="saveGoods()">保存物品</button>
-        </div>
-        <div class="panel" id="goodsList">
-            <h3>全部物品</h3>
-            <div id="goodsWrap"></div>
-        </div>
-        <div class="panel" id="order">
-            <h3>提交记录 <span id="orderBadge"></span></h3>
-            <div class="order-filter">
-                <button class="order-filter-btn active" onclick="filterOrders('all',this)">全部</button>
-                <button class="order-filter-btn" onclick="filterOrders('pending',this)">待处理</button>
-                <button class="order-filter-btn" onclick="filterOrders('done',this)">已处理</button>
-            </div>
-            <div id="orderWrap"></div>
-        </div>
-        <div class="panel" id="bulletinTab">
-            <h3>滚动公告弹幕管理</h3>
-            <input placeholder="输入公告内容" id="bulletinContent">
-            <div class="check-row">
-                <input type="checkbox" id="bulletinEnable">
-                <label for="bulletinEnable">启用这条公告</label>
-            </div>
-            <button class="primary" onclick="addBulletin()">新增公告</button>
-            <div id="bulletinWrap"></div>
-        </div>
-        <div class="panel" id="setting">
-            <h3>修改登录密码</h3>
-            <input placeholder="原密码" type="password" id="oldPwd">
-            <input placeholder="新密码(至少6位)" type="password" id="newPwd">
-            <input placeholder="确认新密码" type="password" id="confirmPwd">
-            <button class="primary" onclick="changePassword()">保存新密码</button>
-        </div>
-        <div class="panel" id="adminManage">
-            <h3>管理员列表</h3>
-            <div id="adminListWrap"></div>
-            <h4>新增管理员</h4>
-            <input placeholder="新管理员账号" id="newAdminUser">
-            <input placeholder="初始密码(至少6位)" id="newAdminPwd">
-            <div class="check-row">
-                <input type="checkbox" id="newAdminSuper">
-                <label for="newAdminSuper">设为超级管理员</label>
-            </div>
-            <button class="primary" onclick="addNewAdmin()">新增管理员</button>
-        </div>
-        <div class="admin-footer">
-            <button onclick="location.href='index.html'">返回前台</button>
-            <button class="danger" onclick="logout()">退出登录</button>
-        </div>
+    <div id="panel-addGoods" style="display:none;">
+      <div class="panel"><div class="panel-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg><span id="addGoodsTitle">新增物品</span></div>
+        <div class="form-group"><label class="form-label">物品名称 <span style="color:var(--danger);">*</span></label><input type="text" class="form-input" id="gName" placeholder="请输入物品名称"></div>
+        <div class="form-group"><label class="form-label">编号 <span style="color:var(--danger);">*</span></label><input type="text" class="form-input" id="gCode" placeholder="请输入物品编号"></div>
+        <div class="form-group"><label class="form-label">选择分类（可选）</label><select class="form-input" id="gCat"></select></div>
+        <div class="form-group"><label class="form-label">简介描述</label><textarea class="form-input" id="gDesc" placeholder="请输入物品简介描述" style="min-height:80px;resize:vertical;font-family:inherit;"></textarea></div>
+        <div class="form-group"><label class="form-label">封面图片</label><img class="upload-preview" id="gPreview"><div class="upload-area" id="gUploadArea" onclick="document.getElementById('gUpload').click()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><p>点击上传封面图片</p></div><input type="file" accept="image/*" id="gUpload" style="display:none;"></div>
+        <div class="switch-row"><div><div class="switch-label">标记无库存</div><div class="switch-desc">开启后物品会显示"无库存"标签</div></div><label class="switch"><input type="checkbox" id="gSellout"><span class="switch-slider"></span></label></div>
+        <button class="btn-primary" style="margin-top:16px;" onclick="saveGoods()" id="saveGoodsBtn">创建物品</button>
+      </div>
     </div>
-    <script>
-        let currentLoginUser = "";
-        let currentRole = "normal";
-        let editTargetId = null;
-        function getDb(){
-            const raw = localStorage.getItem("shop_db");
-            return raw ? JSON.parse(raw) : {
-                goods:[],orders:[],categories:[],
-                adminAccounts:[{username:"2384214009",pwd:"13727733582q.",role:"super"},{username:"admin",pwd:"admin123",role:"normal"}],
-                bulletins:[]
-            };
-        }
-        function saveDb(db){localStorage.setItem("shop_db",JSON.stringify(db));}
-        function loadRemember(){
-            const rem = localStorage.getItem("admin_remember");
-            if(rem){try{const obj=JSON.parse(atob(rem));document.getElementById("inpUser").value=obj.u;document.getElementById("inpPwd").value=obj.p;document.getElementById("rememberCheck").checked=true;}catch(e){}}
-        }
-        loadRemember();
-        function doLogin(){
-            const u=document.getElementById("inpUser").value.trim().toLowerCase();
-            const p=document.getElementById("inpPwd").value.trim();
-            const db=getDb();
-            const findAdmin=db.adminAccounts.find(a=>a.username.toLowerCase()===u && a.pwd===p);
-            if(!findAdmin){alert("账号或者密码错误，请检查");return;}
-            currentLoginUser=findAdmin.username;
-            currentRole=findAdmin.role||"normal";
-            const ck=document.getElementById("rememberCheck").checked;
-            if(ck){localStorage.setItem("admin_remember",btoa(JSON.stringify({u,p})));}else{localStorage.removeItem("admin_remember");}
-            document.getElementById("loginWrap").style.display="none";
-            document.getElementById("adminWrap").style.display="block";
-            document.getElementById("curAdminName").innerText=currentLoginUser;
-            if(currentRole==="super"){document.querySelectorAll(".super-only").forEach(b=>b.style.display="");}
-            renderCatPanel();renderCatSelect();renderGoods();renderOrders();renderBulletins();renderAdminList();
-        }
-        function logout(){localStorage.removeItem("admin_remember");location.reload();}
-        function changePassword(){
-            const db=getDb();const admin=db.adminAccounts.find(a=>a.username===currentLoginUser);
-            const old=document.getElementById("oldPwd").value.trim();
-            const np=document.getElementById("newPwd").value.trim();
-            const cp=document.getElementById("confirmPwd").value.trim();
-            if(old!==admin.pwd){alert("原密码错误");return;}
-            if(np.length<6){alert("新密码至少6位");return;}
-            if(np!==cp){alert("两次输入新密码不一致");return;}
-            admin.pwd=np;saveDb(db);alert("密码修改成功，请重新登录");localStorage.removeItem("admin_remember");location.reload();
-        }
-        function addNewAdmin(){
-            if(currentRole!=="super"){alert("无权限");return;}
-            const db=getDb();
-            const nu=document.getElementById("newAdminUser").value.trim().toLowerCase();
-            const np=document.getElementById("newAdminPwd").value.trim();
-            const isSuper=document.getElementById("newAdminSuper").checked;
-            if(!nu||!np){alert("账号密码不能为空");return;}
-            if(np.length<6){alert("密码至少6位");return;}
-            const exist=db.adminAccounts.some(x=>x.username.toLowerCase()===nu);
-            if(exist){alert("该管理员账号已存在");return;}
-            db.adminAccounts.push({username:nu,pwd:np,role:isSuper?"super":"normal"});
-            saveDb(db);alert("管理员新增完成");
-            document.getElementById("newAdminUser").value="";document.getElementById("newAdminPwd").value="";document.getElementById("newAdminSuper").checked=false;
-            renderAdminList();
-        }
-        function renderAdminList(){
-            if(currentRole!=="super")return;
-            const db=getDb();const wrap=document.getElementById("adminListWrap");
-            wrap.innerHTML="";
-            if(db.adminAccounts.length===0){
-                wrap.innerHTML='<div class="empty-state"><div class="empty-icon">👤</div><div class="empty-text">暂无管理员</div></div>';
-                return;
-            }
-            db.adminAccounts.forEach(a=>{
-                const isSelf=a.username===currentLoginUser;
-                wrap.innerHTML+=`
-                <div style="padding:10px 0;border-bottom:1px solid #f3f4f6;display:flex;justify-content:space-between;align-items:center;">
-                    <div><b>${a.username}</b> ${a.role==="super"?"<span class='badge badge-done'>超级管理员</span>":"<span class='badge badge-pending'>普通管理员</span>"}</div>
-                    ${!isSelf?`<button class="danger" onclick="delAdmin('${a.username}')">删除</button>`:"<span class='small-tip'>当前账号</span>"}
-                </div>`;
-            });
-        }
-        window.delAdmin=function(username){
-            if(currentRole!=="super"){alert("无权限");return;}
-            if(!confirm("确定删除该管理员？"))return;
-            const db=getDb();
-            const target=db.adminAccounts.find(a=>a.username===username);
-            if(target&&target.role==="super"){
-                const superCount=db.adminAccounts.filter(a=>a.role==="super").length;
-                if(superCount<=1){alert("至少保留一个超级管理员");return;}
-            }
-            db.adminAccounts=db.adminAccounts.filter(a=>a.username!==username);
-            saveDb(db);renderAdminList();
-        }
-        function switchTab(tabId,btn){
-            document.querySelectorAll(".panel").forEach(p=>p.classList.remove("show"));
-            document.getElementById(tabId).classList.add("show");
-            document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
-            btn.classList.add("active");
-        }
-        function addCat(){
-            const name=document.getElementById("catName").value.trim();
-            if(!name)return alert("请输入分类名称");
-            const db=getDb();db.categories.push({id:"cat_"+Date.now(),name});saveDb(db);
-            document.getElementById("catName").value="";renderCatPanel();renderCatSelect();
-        }
-        function delCat(cid){if(!confirm("确定删除该分类?"))return;const db=getDb();db.categories=db.categories.filter(x=>x.id!==cid);saveDb(db);renderCatPanel();renderCatSelect();}
-        function renderCatPanel(){
-            const db=getDb();const wrap=document.getElementById("catWrap");
-            wrap.innerHTML="<h4>已有分类</h4>";
-            if(db.categories.length===0){
-                wrap.innerHTML+='<div class="empty-state"><div class="empty-icon">📂</div><div class="empty-text">暂无分类</div></div>';
-                return;
-            }
-            db.categories.forEach(c=>{wrap.innerHTML+=`<div style="padding:8px 0;border-bottom:1px solid #f3f4f6;display:flex;justify-content:space-between;align-items:center;">${c.name} <button class="danger" onclick="delCat('${c.id}')">删除</button></div>`;});
-        }
-        function renderCatSelect(){
-            const db=getDb();const sel=document.getElementById("gCat");
-            sel.innerHTML=`<option value="">请选择分类</option>`;
-            db.categories.forEach(c=>sel.innerHTML+=`<option value="${c.id}">${c.name}</option>`);
-        }
-        var _imgUploadEl=document.getElementById("imgUpload");
-        if(_imgUploadEl){
-            _imgUploadEl.onchange=function(e){
-                const f=e.target.files[0];if(!f)return;
-                const r=new FileReader();
-                r.onload=ev=>{document.getElementById("imgPreview").src=ev.target.result;document.getElementById("imgPreview").style.display="block";};
-                r.readAsDataURL(f);
-            };
-        }
-        function saveGoods(){
-            const name=document.getElementById("gName").value.trim();
-            const price=document.getElementById("gPrice").value.trim();
-            const catId=document.getElementById("gCat").value;
-            const desc=document.getElementById("gDesc").value.trim();
-            const imgSrc=document.getElementById("imgPreview").src;
-            const sellout=document.getElementById("isSelloutEdit").checked;
-            if(!name||!price||!imgSrc||!catId){alert("名称、编号、分类、图片不能为空");return;}
-            const db=getDb();
-            if(editTargetId){
-                const idx=db.goods.findIndex(x=>x.id===editTargetId);
-                if(idx>=0){db.goods[idx]={id:editTargetId,name,price,catId,desc,img:imgSrc,sellout:sellout};}
-                editTargetId=null;
-            }else{
-                db.goods.push({id:Date.now(),name,price,catId,desc,img:imgSrc,sellout:sellout});
-            }
-            saveDb(db);alert("保存成功");
-            document.getElementById("gName").value="";document.getElementById("gPrice").value="";document.getElementById("gCat").value="";
-            document.getElementById("gDesc").value="";document.getElementById("isSelloutEdit").checked=false;
-            document.getElementById("imgPreview").style.display="none";document.getElementById("imgUpload").value="";
-            renderGoods();
-        }
-        function renderGoods(){
-            const db=getDb();const wrap=document.getElementById("goodsWrap");wrap.innerHTML="";
-            if(db.goods.length===0){
-                wrap.innerHTML='<div class="empty-state"><div class="empty-icon">📦</div><div class="empty-text">暂无物品，去新增一个吧</div></div>';
-                return;
-            }
-            db.goods.forEach(g=>{
-                const div=document.createElement("div");div.className="goods-item";
-                div.innerHTML=`
-                    <div class="goods-item-header">
-                        <div class="goods-item-name">${g.name} <span style="color:var(--text-muted);font-weight:400;font-size:13px">No.${g.price}</span></div>
-                        ${g.sellout?'<span class="badge badge-sellout">无库存</span>':'<span class="badge badge-sale">正常</span>'}
-                    </div>
-                    <div class="goods-item-desc">${g.desc||'暂无描述'}</div>
-                    <div class="goods-item-actions">
-                        <button class="primary" onclick="editItem(${g.id})">编辑</button>
-                        <button class="${g.sellout?'ok':'warning'}" onclick="toggleSellout(${g.id})">${g.sellout?"恢复正常":"标记无库存"}</button>
-                        <button class="danger" onclick="delItem(${g.id})">删除</button>
-                    </div>
-                `;
-                wrap.appendChild(div);
-            });
-        }
-        window.toggleSellout=function(gid){const db=getDb();const g=db.goods.find(x=>x.id===gid);g.sellout=!g.sellout;saveDb(db);renderGoods();}
-        window.editItem=function(id){
-            const db=getDb();const g=db.goods.find(x=>x.id===id);
-            editTargetId=id;
-            document.getElementById("gName").value=g.name;document.getElementById("gPrice").value=g.price;
-            document.getElementById("gCat").value=g.catId;document.getElementById("gDesc").value=g.desc;
-            document.getElementById("isSelloutEdit").checked=!!g.sellout;
-            document.getElementById("imgPreview").src=g.img;document.getElementById("imgPreview").style.display="block";
-            document.querySelector('.tab-btn[onclick*="addGoods"]').click();
-        }
-        window.delItem=function(id){if(!confirm("确认删除该物品吗？"))return;const db=getDb();db.goods=db.goods.filter(x=>x.id!==id);saveDb(db);renderGoods();}
-        let currentOrderFilter="all";
-        function renderOrders(){
-            const db=getDb();const wrap=document.getElementById("orderWrap");wrap.innerHTML="";
-            const pendingCount=db.orders.filter(o=>o.status==="pending").length;
-            document.getElementById("orderBadge").innerText=pendingCount>0?`【待处理:${pendingCount}】`:"";
-            let orders=db.orders;
-            if(currentOrderFilter==="pending") orders=orders.filter(o=>o.status==="pending");
-            if(currentOrderFilter==="done") orders=orders.filter(o=>o.status==="done");
-            if(orders.length===0){wrap.innerHTML='<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">暂无提交记录</div></div>';return;}
-            orders.forEach(o=>{
-                let itemHtml="";
-                o.items.forEach(it=>{
-                    itemHtml+=`<div class="order-item-row"><span class="order-item-name">${it.goodsName} ×${it.qty}</span><span class="order-item-price">编号 ${it.sub}</span></div>`;
-                });
-                const statusClass=o.status==="pending"?"pending":"done";
-                const statusText=o.status==="pending"?"待处理":"已处理";
-                wrap.innerHTML+=`
-                <div class="order-card" onclick="showOrderDetail('${o.orderNo}')">
-                    <div class="order-card-header">
-                        <span class="order-no">${o.orderNo}</span>
-                        <span class="order-status ${statusClass}">${statusText}</span>
-                    </div>
-                    <div class="order-device">设备ID：${o.deviceId.substring(0,12)}...</div>
-                    <div class="order-items-box">
-                        <div class="order-items-title">物品明细（${o.items.length}种）</div>
-                        ${itemHtml}
-                        <div class="order-total-row"><span class="order-total-label">合计</span><span class="order-total-value">${o.total}</span></div>
-                    </div>
-                    <div class="order-contact-box">
-                        <div class="order-contact-row"><span class="order-contact-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span><span class="order-contact-value">${o.userName}</span></div>
-                        <div class="order-contact-row"><span class="order-contact-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span><span class="order-contact-value">${o.userPhone}</span></div>
-                        <div class="order-contact-row"><span class="order-contact-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></span><span class="order-contact-value">${o.userAddr}</span></div>
-                        <div class="order-contact-row"><span class="order-contact-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span><span class="order-contact-value">${o.note||"无"}</span></div>
-                    </div>
-                    <div class="order-time"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${o.createTime}</div>
-                    <button class="order-action-btn ${o.status==='done'?'restore':''}" onclick="event.stopPropagation();toggleOrderStatus('${o.orderNo}')">
-                        ${o.status==='pending'?'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>标记已处理':'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>恢复待处理'}
-                    </button>
-                </div>`;
-            });
-        }
-        window.filterOrders=function(type,btn){
-            currentOrderFilter=type;
-            document.querySelectorAll(".order-filter-btn").forEach(b=>b.classList.remove("active"));
-            btn.classList.add("active");
-            renderOrders();
-        }
-        window.toggleOrderStatus=function(ordNo){
-            const db=getDb();const o=db.orders.find(x=>x.orderNo===ordNo);
-            o.status=o.status==="pending"?"done":"pending";
-            saveDb(db);renderOrders();
-        }
-        let currentDetailOrderNo=null;
-        window.showOrderDetail=function(ordNo){
-            const db=getDb();const o=db.orders.find(x=>x.orderNo===ordNo);
-            if(!o) return;
-            currentDetailOrderNo=ordNo;
-            document.getElementById("detailOrderNo").innerText=o.orderNo;
-            document.getElementById("detailOrderTime").innerText="提交时间："+o.createTime;
-            const statusEl=document.getElementById("detailOrderStatus");
-            statusEl.className="order-status "+(o.status==="pending"?"pending":"done");
-            statusEl.innerText=o.status==="pending"?"待处理":"已处理";
-            let itemsHtml="";
-            o.items.forEach(it=>{
-                const goods=db.goods.find(g=>g.name===it.goodsName);
-                const imgSrc=goods?goods.img:"";
-                itemsHtml+=`
-                <div class="order-detail-item">
-                    ${imgSrc?`<img class="order-detail-item-img" src="${imgSrc}" alt="${it.goodsName}">`:''}
-                    <div class="order-detail-item-info">
-                        <div class="order-detail-item-name">${it.goodsName}</div>
-                        <div class="order-detail-item-qty">数量：${it.qty}件</div>
-                    </div>
-                    <div class="order-detail-item-price">编号 ${it.sub}</div>
-                </div>`;
-            });
-            document.getElementById("detailItems").innerHTML=itemsHtml;
-            document.getElementById("detailTotal").innerText=o.total;
-            document.getElementById("detailUserName").innerText=o.userName;
-            document.getElementById("detailUserPhone").innerText=o.userPhone;
-            document.getElementById("detailUserAddr").innerText=o.userAddr;
-            document.getElementById("detailNote").innerText=o.note||"无";
-            const actionBtn=document.getElementById("detailActionBtn");
-            actionBtn.innerText=o.status==="pending"?"标记已处理":"恢复待处理";
-            document.getElementById("orderDetailModal").classList.add("show");
-            document.body.style.overflow="hidden";
-        }
-        window.closeOrderDetail=function(){
-            document.getElementById("orderDetailModal").classList.remove("show");
-            document.body.style.overflow="";
-            currentDetailOrderNo=null;
-        }
-        window.detailToggleStatus=function(){
-            if(!currentDetailOrderNo) return;
-            const db=getDb();const o=db.orders.find(x=>x.orderNo===currentDetailOrderNo);
-            o.status=o.status==="pending"?"done":"pending";
-            saveDb(db);
-            showOrderDetail(currentDetailOrderNo);
-            renderOrders();
-        }
-        function addBulletin(){
-            const db=getDb();const content=document.getElementById("bulletinContent").value.trim();
-            const enable=document.getElementById("bulletinEnable").checked;
-            if(!content){alert("公告内容不能为空");return;}
-            db.bulletins.push({bid:"bul_"+Date.now(),content:content,enable:enable});
-            saveDb(db);alert("公告保存成功");
-            document.getElementById("bulletinContent").value="";document.getElementById("bulletinEnable").checked=false;
-            renderBulletins();
-        }
-        window.delBulletin=function(bid){if(!confirm("确定删除这条公告？"))return;const db=getDb();db.bulletins=db.bulletins.filter(b=>b.bid!==bid);saveDb(db);renderBulletins();}
-        window.toggleBulletinEnable=function(bid){const db=getDb();const b=db.bulletins.find(x=>x.bid===bid);b.enable=!b.enable;saveDb(db);renderBulletins();}
-        function renderBulletins(){
-            const db=getDb();const wrap=document.getElementById("bulletinWrap");
-            wrap.innerHTML="<h4>已创建公告列表</h4>";
-            if(db.bulletins.length===0){wrap.innerHTML+='<div class="empty-state"><div class="empty-icon">📢</div><div class="empty-text">暂无公告</div></div>';return;}
-            db.bulletins.forEach(b=>{
-                wrap.innerHTML+=`
-                <div style="padding:10px 0;border-bottom:1px solid #f3f4f6;">
-                    <div style="margin-bottom:6px;">${b.content} ${b.enable?"<span class='badge badge-done'>已启用</span>":"<span class='badge badge-pending'>已关闭</span>"}</div>
-                    <button class="primary" onclick="toggleBulletinEnable('${b.bid}')">${b.enable?"关闭公告":"启用公告"}</button>
-                    <button class="danger" onclick="delBulletin('${b.bid}')">删除</button>
-                </div>`;
-            });
-        }
-    </script>
-    <!-- 订单详情页 -->
-    <div class="order-detail-modal" id="orderDetailModal">
-        <div class="order-detail-header">
-            <button class="order-detail-back" onclick="closeOrderDetail()">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-            </button>
-            <div class="order-detail-title">
-                <div class="order-detail-no" id="detailOrderNo"></div>
-                <div class="order-detail-time" id="detailOrderTime"></div>
-            </div>
-            <span class="order-status" id="detailOrderStatus"></span>
-        </div>
-        <div class="order-detail-content">
-            <div class="order-detail-card">
-                <h3>物品明细</h3>
-                <div id="detailItems"></div>
-                <div class="order-detail-total">
-                    <span class="order-detail-total-label">合计</span>
-                    <span class="order-detail-total-value" id="detailTotal"></span>
-                </div>
-            </div>
-            <div class="order-detail-card">
-                <h3>收货人信息</h3>
-                <div class="order-detail-contact-row">
-                    <div class="order-detail-contact-icon">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                    </div>
-                    <span class="order-detail-contact-label">收货人</span>
-                    <span class="order-detail-contact-value" id="detailUserName"></span>
-                </div>
-                <div class="order-detail-contact-row">
-                    <div class="order-detail-contact-icon">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-                    </div>
-                    <span class="order-detail-contact-label">联系电话</span>
-                    <span class="order-detail-contact-value" id="detailUserPhone"></span>
-                </div>
-                <div class="order-detail-contact-row">
-                    <div class="order-detail-contact-icon">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                    </div>
-                    <span class="order-detail-contact-label">联系地址</span>
-                    <span class="order-detail-contact-value" id="detailUserAddr"></span>
-                </div>
-                <div class="order-detail-contact-row">
-                    <div class="order-detail-contact-icon">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-                    </div>
-                    <span class="order-detail-contact-label">备注</span>
-                    <span class="order-detail-contact-value" id="detailNote"></span>
-                </div>
-            </div>
-        </div>
-        <div class="order-detail-footer" id="detailFooter">
-            <button class="btn-outline" onclick="closeOrderDetail()">返回列表</button>
-            <button class="btn-solid" id="detailActionBtn" onclick="detailToggleStatus()"></button>
-        </div>
-    </div>
+    <div id="panel-goodsList" style="display:none;"><div class="goods-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="goodsSearch" placeholder="搜索物品名称..." oninput="renderGoodsList()"></div><div id="goodsListBody"></div></div>
+    <div id="panel-records" style="display:none;"><div class="record-filters"><div class="record-filter active" onclick="filterRecords('all',this)">全部</div><div class="record-filter" onclick="filterRecords('pending',this)">待处理</div><div class="record-filter" onclick="filterRecords('done',this)">已处理</div></div><div id="recordsBody"></div></div>
+    <div id="panel-bulletin" style="display:none;"><div class="panel"><div class="panel-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>新增公告</div><div class="form-group"><textarea class="form-input" id="newBulletin" placeholder="请输入公告内容" style="min-height:80px;resize:vertical;font-family:inherit;"></textarea></div><div class="check-row"><input type="checkbox" id="newBulletinEnable" checked><label for="newBulletinEnable">立即启用</label></div><button class="btn-primary" onclick="addBulletin()">发布公告</button></div><div class="panel"><div class="panel-title">公告列表</div><div id="bulletinList"></div></div></div>
+    <div id="panel-account" style="display:none;"><div class="panel"><div class="panel-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>修改密码</div><div class="pwd-group"><label class="form-label">原密码</label><input type="password" class="form-input" id="oldPwd" placeholder="请输入原密码"></div><div class="pwd-group"><label class="form-label">新密码</label><input type="password" class="form-input" id="newPwd" placeholder="请输入新密码（至少6位）"></div><div class="pwd-group"><label class="form-label">确认新密码</label><input type="password" class="form-input" id="confirmPwd" placeholder="请再次输入新密码"></div><button class="btn-primary" onclick="changePwd()">确认修改</button></div></div>
+    <div id="panel-admins" class="super-only" style="display:none;"><div class="panel"><div class="panel-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>新增管理员</div><div class="form-group"><label class="form-label">账号</label><input type="text" class="form-input" id="newAdminUser" placeholder="请输入管理员账号"></div><div class="form-group"><label class="form-label">密码</label><input type="password" class="form-input" id="newAdminPwd" placeholder="请输入密码（至少6位）"></div><button class="btn-primary" onclick="addAdmin()">添加管理员</button></div><div class="panel"><div class="panel-title">管理员列表</div><div id="adminList"></div></div></div>
+  </div>
+</div>
+<script>
+var curUser='',curRole='normal',editGoodsId=null,recordFilter='all';
+function getDb(){try{var raw=localStorage.getItem('shop_db');if(!raw)return{goods:[],categories:[],bulletins:[],cart:[],orders:[],adminAccounts:[{username:'2384214009',pwd:'13727733582q',role:'super'},{username:'admin',pwd:'admin123',role:'normal'}]};return JSON.parse(raw);}catch(e){return{goods:[],categories:[],bulletins:[],cart:[],orders:[],adminAccounts:[]};}}
+function saveDb(db){localStorage.setItem('shop_db',JSON.stringify(db));}
+function showToast(msg){var t=document.getElementById('toast');t.innerText=msg;t.className='toast show';setTimeout(function(){t.className='toast';},2000);}
+function getGrad(catId){if(catId==='aixi')return'grad-1';if(catId==='alishan')return'grad-2';if(catId==='baile')return'grad-3';return'grad-0';}
+function getCatName(catId){var db=getDb();var c=db.categories.find(function(x){return x.id===catId;});return c?c.name:'';}
+function loadRemember(){var rem=localStorage.getItem('admin_remember');if(rem){try{var obj=JSON.parse(atob(rem));document.getElementById('loginUser').value=obj.u;document.getElementById('loginPwd').value=obj.p;document.getElementById('rememberCheck').checked=true;}catch(e){}}}
+loadRemember();
+function doLogin(){var u=document.getElementById('loginUser').value.trim().toLowerCase();var p=document.getElementById('loginPwd').value.trim();if(!u||!p){showToast('请输入账号和密码');return;}var db=getDb();var admin=db.adminAccounts.find(function(a){return a.username.toLowerCase()===u&&a.pwd===p;});if(!admin){showToast('账号或者密码错误，请检查');return;}curUser=admin.username;curRole=admin.role||'normal';if(document.getElementById('rememberCheck').checked){localStorage.setItem('admin_remember',btoa(JSON.stringify({u:u,p:p})));}else{localStorage.removeItem('admin_remember');}document.getElementById('loginPage').style.display='none';document.getElementById('adminApp').style.display='block';document.getElementById('adminUser').innerText=curUser;if(curRole==='super'){document.querySelectorAll('.super-only').forEach(function(el){el.style.display='';});}else{document.querySelectorAll('.super-only').forEach(function(el){el.style.display='none';});}initAdmin();}
+function doLogout(){localStorage.removeItem('admin_remember');location.reload();}
+function goFront(){window.location.href='index.html';}
+function initAdmin(){renderCatSelect();renderCatList();renderGoodsList();renderRecords();renderBulletins();renderAdminList();setupImageUpload();}
+function switchTab(tab){var tabs1=document.querySelectorAll('#tabsRow1 .tab');var tabs2=document.querySelectorAll('#tabsRow2 .tab');var allTabs=Array.prototype.slice.call(tabs1).concat(Array.prototype.slice.call(tabs2));var tabMap={cat:0,addGoods:1,goodsList:2,records:3,bulletin:4,account:5,admins:6};allTabs.forEach(function(t,i){t.classList.toggle('active',i===tabMap[tab]);});var panels=['cat','addGoods','goodsList','records','bulletin','account','admins'];panels.forEach(function(p){document.getElementById('panel-'+p).style.display=(p===tab?'block':'none');});if(tab==='addGoods'){resetGoodsForm();}}
+function renderCatSelect(){var db=getDb();var sel=document.getElementById('gCat');sel.innerHTML='<option value="">请选择分类</option>';db.categories.filter(function(c){return c.id!=='all';}).forEach(function(c){sel.innerHTML+='<option value="'+c.id+'">'+c.name+'</option>';});}
+function renderCatList(){var db=getDb();var list=db.categories.filter(function(c){return c.id!=='all';});document.getElementById('catListTitle').innerText='分类列表（'+list.length+'）';var wrap=document.getElementById('catList');if(list.length===0){wrap.innerHTML='<div class="empty"><div class="empty-icon">📂</div><div class="empty-text">暂无分类</div></div>';return;}var html='';list.forEach(function(c){html+='<div class="cat-list-item"><span class="cat-drag">⋮⋮</span><span class="cat-name">'+c.name+'</span><span class="cat-sort">排序：'+(c.sort||0)+'</span><div class="cat-del" onclick="delCat(\''+c.id+'\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></div></div>';});wrap.innerHTML=html;}
+function addCat(){var name=document.getElementById('newCatName').value.trim();var sort=parseInt(document.getElementById('newCatSort').value)||0;if(!name){showToast('请输入分类名称');return;}var db=getDb();var id='cat_'+Date.now();db.categories.push({id:id,name:name,sort:sort});saveDb(db);document.getElementById('newCatName').value='';document.getElementById('newCatSort').value='';renderCatSelect();renderCatList();showToast('分类添加成功');}
+function delCat(id){if(!confirm('确定删除该分类？'))return;var db=getDb();db.categories=db.categories.filter(function(c){return c.id!==id;});saveDb(db);renderCatSelect();renderCatList();showToast('已删除');}
+function resetGoodsForm(){editGoodsId=null;document.getElementById('addGoodsTitle').innerText='新增物品';document.getElementById('saveGoodsBtn').innerText='创建物品';document.getElementById('gName').value='';document.getElementById('gCode').value='';document.getElementById('gCat').value='';document.getElementById('gDesc').value='';document.getElementById('gSellout').checked=false;document.getElementById('gPreview').style.display='none';document.getElementById('gPreview').src='';document.getElementById('gUpload').value='';}
+function setupImageUpload(){var upload=document.getElementById('gUpload');if(upload){upload.onchange=function(e){var f=e.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(ev){var preview=document.getElementById('gPreview');preview.src=ev.target.result;preview.style.display='block';};r.readAsDataURL(f);};}}
+function saveGoods(){var name=document.getElementById('gName').value.trim();var code=document.getElementById('gCode').value.trim();var catId=document.getElementById('gCat').value;var desc=document.getElementById('gDesc').value.trim();var img=document.getElementById('gPreview').src;var sellout=document.getElementById('gSellout').checked;if(!name){showToast('请输入物品名称');return;}if(!code){showToast('请输入物品编号');return;}if(!img||img===window.location.href){showToast('请上传封面图片');return;}var db=getDb();if(editGoodsId){var idx=db.goods.findIndex(function(g){return g.id===editGoodsId;});if(idx>=0){db.goods[idx]={id:editGoodsId,name:name,code:code,catId:catId,desc:desc,img:img,sellout:sellout};}showToast('修改成功');}else{db.goods.push({id:Date.now(),name:name,code:code,catId:catId,desc:desc,img:img,sellout:sellout});showToast('创建成功');}saveDb(db);resetGoodsForm();renderGoodsList();}
+function editGoods(id){var db=getDb();var g=db.goods.find(function(x){return x.id===id;});if(!g)return;editGoodsId=id;document.getElementById('addGoodsTitle').innerText='编辑物品';document.getElementById('saveGoodsBtn').innerText='保存修改';document.getElementById('gName').value=g.name;document.getElementById('gCode').value=g.code||'';document.getElementById('gCat').value=g.catId||'';document.getElementById('gDesc').value=g.desc||'';document.getElementById('gSellout').checked=!!g.sellout;if(g.img){document.getElementById('gPreview').src=g.img;document.getElementById('gPreview').style.display='block';}switchTab('addGoods');}
+function toggleGoodsSellout(id){var db=getDb();var g=db.goods.find(function(x){return x.id===id;});if(!g)return;g.sellout=!g.sellout;saveDb(db);renderGoodsList();showToast(g.sellout?'已标记无库存':'已恢复上架');}
+function delGoods(id){if(!confirm('确定删除该物品？'))return;var db=getDb();db.goods=db.goods.filter(function(g){return g.id!==id;});saveDb(db);renderGoodsList();showToast('已删除');}
+function renderGoodsList(){var db=getDb();var keyword=document.getElementById('goodsSearch')?document.getElementById('goodsSearch').value.trim().toLowerCase():'';var list=db.goods;if(keyword){list=list.filter(function(g){return g.name.toLowerCase().indexOf(keyword)!==-1;});}var wrap=document.getElementById('goodsListBody');if(list.length===0){wrap.innerHTML='<div class="empty"><div class="empty-icon">📦</div><div class="empty-text">暂无物品</div></div>';return;}var html='';list.forEach(function(g){var grad=getGrad(g.catId);var statusBadge=g.sellout?'<span class="status-badge sellout">无库存</span>':'<span class="status-badge normal">正常</span>';var toggleClass=g.sellout?'action-btn toggle off':'action-btn toggle';html+='<div class="goods-row"><div class="goods-row-img '+grad+'"><img src="'+g.img+'" alt="'+g.name+'" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'"><div class="fallback" style="display:none;">'+g.name+'</div></div><div class="goods-row-info"><div class="goods-row-name">'+g.name+' '+statusBadge+'</div><div class="goods-row-code">编号 '+(g.code||'-')+'</div><div class="goods-row-cat">'+(g.catId?getCatName(g.catId):'未分类')+'</div></div><div class="goods-row-actions"><div class="action-btn edit" onclick="editGoods('+g.id+')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div><div class="'+toggleClass+'" onclick="toggleGoodsSellout('+g.id+')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></div><div class="action-btn del" onclick="delGoods('+g.id+')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></div></div></div>';});wrap.innerHTML=html;}
+function filterRecords(filter,el){recordFilter=filter;document.querySelectorAll('.record-filter').forEach(function(f){f.classList.remove('active');});el.classList.add('active');renderRecords();}
+function renderRecords(){var db=getDb();var list=db.orders;if(recordFilter==='pending'){list=list.filter(function(o){return o.status==='pending';});}else if(recordFilter==='done'){list=list.filter(function(o){return o.status==='done';});}var wrap=document.getElementById('recordsBody');if(list.length===0){wrap.innerHTML='<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">暂无记录</div></div>';return;}var html='';list.forEach(function(order){var statusText=order.status==='done'?'已处理':'待处理';var statusClass=order.status==='done'?'done':'pending';var count=0;order.items.forEach(function(it){count+=it.qty;});var itemsHtml='<div class="record-item-title">物品明细（'+count+'种）</div>';order.items.forEach(function(it){itemsHtml+='<div class="record-item-row"><span class="record-item-name">'+it.goodsName+' × '+it.qty+'</span><span class="record-item-code">编号 '+(it.code||'-')+'</span></div>';});var contactHtml='';if(order.userName)contactHtml+='<div><span class="icon">👤</span>'+order.userName+'</div>';if(order.userPhone)contactHtml+='<div><span class="icon">📞</span>'+order.userPhone+'</div>';if(order.userAddr)contactHtml+='<div><span class="icon">📍</span>'+order.userAddr+'</div>';if(order.note)contactHtml+='<div><span class="icon">📝</span>'+order.note+'</div>';var btnText=order.status==='done'?'✓ 已处理':'✓ 标记已处理';var btnClass=order.status==='done'?'record-action-btn done':'record-action-btn';html+='<div class="record-card"><div class="record-head"><div><div class="record-no">'+order.orderNo+'</div><div class="record-device">设备ID：'+(order.deviceId||'-').substr(0,12)+'...</div></div><span class="order-status '+statusClass+'">'+statusText+'</span></div><div class="record-items">'+itemsHtml+'</div><div class="record-total"><span class="record-total-label">合计</span><span class="record-total-val">'+order.total+'</span></div><div class="record-contact">'+contactHtml+'</div><div class="record-time">'+order.createTime+'</div><button class="'+btnClass+'" onclick="toggleRecordStatus(\''+order.orderNo+'\')">'+btnText+'</button></div>';});wrap.innerHTML=html;}
+function toggleRecordStatus(orderNo){var db=getDb();var order=db.orders.find(function(o){return o.orderNo===orderNo;});if(!order)return;if(order.status==='done'){order.status='pending';showToast('已恢复为待处理');}else{order.status='done';showToast('已标记为已处理');}saveDb(db);renderRecords();}
+function renderBulletins(){var db=getDb();var wrap=document.getElementById('bulletinList');if(db.bulletins.length===0){wrap.innerHTML='<div class="empty"><div class="empty-icon">📢</div><div class="empty-text">暂无公告</div></div>';return;}var html='';db.bulletins.forEach(function(b){var statusBadge=b.enable?'<span style="color:var(--success);font-size:12px;">已启用</span>':'<span style="color:var(--warning);font-size:12px;">已关闭</span>';var toggleBtn=b.enable?'<button class="bulletin-btn disable" onclick="toggleBulletin(\''+b.id+'\')">关闭公告</button>':'<button class="bulletin-btn enable" onclick="toggleBulletin(\''+b.id+'\')">启用公告</button>';html+='<div class="bulletin-item"><div class="bulletin-content">'+b.content+' '+statusBadge+'</div><div class="bulletin-actions">'+toggleBtn+'<button class="bulletin-btn del" onclick="delBulletin(\''+b.id+'\')">删除</button></div></div>';});wrap.innerHTML=html;}
+function addBulletin(){var content=document.getElementById('newBulletin').value.trim();if(!content){showToast('请输入公告内容');return;}var enable=document.getElementById('newBulletinEnable').checked;var db=getDb();db.bulletins.push({id:'bul_'+Date.now(),content:content,enable:enable});saveDb(db);document.getElementById('newBulletin').value='';renderBulletins();showToast('公告发布成功');}
+function toggleBulletin(id){var db=getDb();var b=db.bulletins.find(function(x){return x.id===id;});if(!b)return;b.enable=!b.enable;saveDb(db);renderBulletins();showToast(b.enable?'已启用':'已关闭');}
+function delBulletin(id){if(!confirm('确定删除这条公告？'))return;var db=getDb();db.bulletins=db.bulletins.filter(function(b){return b.id!==id;});saveDb(db);renderBulletins();showToast('已删除');}
+function changePwd(){var oldP=document.getElementById('oldPwd').value.trim();var newP=document.getElementById('newPwd').value.trim();var confirmP=document.getElementById('confirmPwd').value.trim();var db=getDb();var admin=db.adminAccounts.find(function(a){return a.username===curUser;});if(!admin){showToast('账号不存在');return;}if(oldP!==admin.pwd){showToast('原密码错误');return;}if(newP.length<6){showToast('新密码至少6位');return;}if(newP!==confirmP){showToast('两次输入新密码不一致');return;}admin.pwd=newP;saveDb(db);showToast('密码修改成功，请重新登录');setTimeout(function(){doLogout();},1500);}
+function renderAdminList(){var db=getDb();var wrap=document.getElementById('adminList');if(db.adminAccounts.length===0){wrap.innerHTML='<div class="empty"><div class="empty-icon">👥</div><div class="empty-text">暂无管理员</div></div>';return;}var html='';db.adminAccounts.forEach(function(a){var roleBadge=a.role==='super'?'<span class="status-badge normal">超级管理员</span>':'<span class="status-badge" style="background:#e8f5f3;color:var(--primary);">普通管理员</span>';var delBtn=a.username===curUser?'':'<div class="cat-del" onclick="delAdmin(\''+a.username+'\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></div>';html+='<div class="cat-list-item"><span class="cat-name">'+a.username+' '+roleBadge+'</span>'+delBtn+'</div>';});wrap.innerHTML=html;}
+function addAdmin(){var u=document.getElementById('newAdminUser').value.trim().toLowerCase();var p=document.getElementById('newAdminPwd').value.trim();if(!u||!p){showToast('请输入账号和密码');return;}if(p.length<6){showToast('密码至少6位');return;}var db=getDb();if(db.adminAccounts.find(function(a){return a.username.toLowerCase()===u;})){showToast('该账号已存在');return;}db.adminAccounts.push({username:u,pwd:p,role:'normal'});saveDb(db);document.getElementById('newAdminUser').value='';document.getElementById('newAdminPwd').value='';renderAdminList();showToast('管理员添加成功');}
+function delAdmin(username){if(!confirm('确定删除该管理员？'))return;var db=getDb();db.adminAccounts=db.adminAccounts.filter(function(a){return a.username!==username;});saveDb(db);renderAdminList();showToast('已删除');}
+</script>
 </body>
 </html>

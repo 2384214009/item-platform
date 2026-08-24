@@ -6,946 +6,425 @@
 <title>物品展示选择平台</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;background:#f5f6f8;color:#333;min-height:100vh;padding-bottom:70px;}
-:root{--primary:#2eb4a8;--primary-dark:#1a8a7f;--primary-light:#e8f8f6;--text:#333;--text-secondary:#888;--border:#eee;--card:#fff;--danger:#f56c6c;--warning:#e6a23c;--success:#67c23a;}
-
-/* 顶部标题 */
-.header{background:#fff;padding:16px 16px 12px;position:sticky;top:0;z-index:100;box-shadow:0 1px 4px rgba(0,0,0,0.05);}
-.header h1{font-size:20px;font-weight:700;color:var(--text);margin-bottom:4px;}
-.header .subtitle{font-size:12px;color:var(--text-secondary);}
-
-/* 搜索框 */
-.search-wrap{padding:0 16px 12px;background:#fff;}
-.search-box{display:flex;align-items:center;background:#f5f6f8;border-radius:10px;padding:10px 14px;}
-.search-box svg{width:18px;height:18px;color:var(--text-secondary);flex-shrink:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;background:#f5f9f8;color:#333;min-height:100vh;}
+:root{--primary:#2eb4a8;--primary-dark:#1a8a7f;--primary-light:#e8f5f3;--bg:#f5f9f8;--card:#fff;--text:#333;--text2:#888;--text3:#bbb;--border:#eef2f1;--danger:#f56c6c;--warning:#e6a23c;--success:#67c23a;--radius:16px;--radius-sm:10px;--radius-btn:24px;}
+.app{max-width:500px;margin:0 auto;min-height:100vh;background:var(--bg);position:relative;padding-bottom:70px;}
+.barrage{background:var(--primary-light);padding:10px 16px;display:flex;align-items:center;gap:8px;position:relative;overflow:hidden;}
+.barrage-icon{color:var(--primary);flex-shrink:0;font-size:14px;}
+.barrage-text{flex:1;overflow:hidden;white-space:nowrap;position:relative;font-size:13px;color:var(--primary-dark);}
+.barrage-scroll{display:inline-block;white-space:nowrap;animation:barrage 18s linear infinite;padding-left:100%;}
+@keyframes barrage{0%{transform:translateX(0);}100%{transform:translateX(-100%);}}
+.barrage-close{cursor:pointer;color:var(--text2);font-size:18px;line-height:1;padding:0 4px;flex-shrink:0;}
+.header{padding:20px 16px 12px;}
+.header h1{font-size:22px;font-weight:700;color:var(--primary);margin-bottom:4px;}
+.header .sub{font-size:13px;color:var(--text2);}
+.search-wrap{padding:0 16px 14px;}
+.search-box{display:flex;align-items:center;background:#fff;border-radius:var(--radius-sm);padding:11px 14px;border:1px solid var(--border);}
+.search-box svg{width:18px;height:18px;color:var(--text3);flex-shrink:0;}
 .search-box input{flex:1;border:none;outline:none;background:transparent;font-size:14px;margin-left:8px;color:var(--text);}
-
-/* 公告栏 */
-.barrage-wrap{background:var(--primary-light);padding:8px 16px;display:flex;align-items:center;gap:8px;border-radius:8px;margin:0 16px 12px;position:relative;overflow:hidden;}
-.barrage-text{font-size:13px;color:var(--primary-dark);flex:1;overflow:hidden;white-space:nowrap;position:relative;}
-.barrage-scroll{display:inline-block;white-space:nowrap;animation:barrageScroll 15s linear infinite;padding-left:100%;}
-@keyframes barrageScroll{0%{transform:translateX(0);}100%{transform:translateX(-100%);}}
-.barrage-close{cursor:pointer;color:var(--text-secondary);font-size:16px;line-height:1;padding:0 4px;flex-shrink:0;}
-
-/* 分类标签 */
-.cat-tabs{display:flex;gap:8px;padding:0 16px 12px;overflow-x:auto;scrollbar-width:none;}
-.cat-tabs::-webkit-scrollbar{display:none;}
-.cat-item{flex-shrink:0;padding:6px 16px;border-radius:20px;background:#fff;border:1px solid var(--border);font-size:13px;color:var(--text-secondary);cursor:pointer;transition:all 0.2s;}
-.cat-item.active{background:var(--primary);color:#fff;border-color:transparent;box-shadow:0 4px 12px rgba(46,180,168,0.25);}
-
-/* 商品列表 */
-.goods-list{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 16px;}
-.goods-card{background:var(--card);border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);cursor:pointer;transition:transform 0.2s;position:relative;}
-.goods-card:active{transform:scale(0.98);}
-.goods-img-wrap{width:100%;height:140px;overflow:hidden;position:relative;background:#f0f0f0;}
-.goods-img-wrap img{width:100%;height:100%;object-fit:cover;display:block;}
-.goods-img-fallback{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;font-weight:700;text-shadow:0 2px 8px rgba(0,0,0,0.2);position:absolute;top:0;left:0;padding:4px;text-align:center;}
-.sellout-tag{position:absolute;top:8px;left:8px;background:rgba(0,0,0,0.6);color:#fff;font-size:11px;padding:3px 8px;border-radius:4px;z-index:2;}
-.goods-info{padding:10px 12px;}
-.goods-name{font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.goods-code{font-size:11px;color:var(--text-secondary);margin-bottom:6px;}
-.goods-bottom{display:flex;align-items:center;justify-content:space-between;}
-.goods-price{font-size:16px;font-weight:700;color:var(--primary);}
-.goods-price::before{content:'¥';font-size:12px;margin-right:1px;}
-.cart-add{width:26px;height:26px;border-radius:50%;background:var(--primary);color:#fff;border:none;font-size:18px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-
-/* 渐变背景 */
-.grad-aixi{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%) !important;}
-.grad-alishan{background:linear-gradient(135deg,#f093fb 0%,#f5576c 100%) !important;}
-.grad-baile{background:linear-gradient(135deg,#4facfe 0%,#00f2fe 100%) !important;}
-.grad-default{background:linear-gradient(135deg,#a8edea 0%,#fed6e3 100%) !important;}
-
-/* 空状态 */
-.empty-state{grid-column:1/-1;text-align:center;padding:60px 20px;}
-.empty-icon{font-size:48px;margin-bottom:12px;}
-.empty-text{font-size:14px;color:var(--text-secondary);}
-
-/* 底部导航 */
-.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:#fff;display:flex;justify-content:space-around;align-items:center;padding:8px 0 12px;box-shadow:0 -2px 10px rgba(0,0,0,0.05);z-index:100;}
-.nav-item{display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;color:var(--text-secondary);font-size:11px;flex:1;}
-.nav-item svg{width:22px;height:22px;}
-.nav-item.active{color:var(--primary);}
-
-/* 浮动购物车按钮 */
-.fab-cart{position:fixed;right:16px;bottom:90px;width:52px;height:52px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(46,180,168,0.4);cursor:pointer;z-index:99;touch-action:none;user-select:none;}
-.fab-cart svg{width:24px;height:24px;}
-.fab-badge{position:absolute;top:-4px;right:-4px;background:var(--danger);color:#fff;font-size:10px;min-width:18px;height:18px;border-radius:9px;display:none;align-items:center;justify-content:center;padding:0 4px;}
-
-/* 弹窗通用 */
-.modal-mask{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:200;display:none;align-items:flex-end;justify-content:center;}
-.modal-mask.show{display:flex;}
-.modal-content{background:#fff;width:100%;max-height:85vh;border-radius:16px 16px 0 0;overflow:hidden;display:flex;flex-direction:column;animation:slideUp 0.3s ease;}
+.cats{display:flex;gap:8px;padding:0 16px 14px;overflow-x:auto;scrollbar-width:none;}
+.cats::-webkit-scrollbar{display:none;}
+.cat{flex-shrink:0;padding:7px 18px;border-radius:20px;background:#fff;border:1px solid var(--border);font-size:13px;color:var(--text2);cursor:pointer;transition:all .2s;}
+.cat.active{background:var(--primary);color:#fff;border-color:transparent;box-shadow:0 4px 12px rgba(46,180,168,.25);}
+.goods-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 16px 20px;}
+.goods-card{background:var(--card);border-radius:var(--radius);overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.04);cursor:pointer;transition:transform .15s;}
+.goods-card:active{transform:scale(.98);}
+.goods-img{width:100%;aspect-ratio:1/1;overflow:hidden;position:relative;background:#f0f0f0;}
+.goods-img img{width:100%;height:100%;object-fit:cover;display:block;}
+.goods-img .fallback{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;font-weight:700;text-align:center;padding:8px;position:absolute;top:0;left:0;}
+.sellout-tag{position:absolute;top:8px;right:8px;background:rgba(245,108,108,.9);color:#fff;font-size:11px;padding:3px 8px;border-radius:4px;z-index:2;}
+.goods-info{padding:10px 12px 12px;}
+.goods-name{font-size:14px;font-weight:600;color:var(--text);margin-bottom:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.goods-code{font-size:12px;color:var(--text2);margin-bottom:10px;}
+.goods-btn{width:100%;padding:8px 0;border-radius:var(--radius-btn);font-size:13px;font-weight:600;cursor:pointer;border:none;text-align:center;}
+.goods-btn.active{background:var(--primary);color:#fff;}
+.goods-btn.disabled{background:#f0f0f0;color:var(--text3);cursor:not-allowed;}
+.grad-1{background:linear-gradient(135deg,#667eea,#764ba2)!important;}
+.grad-2{background:linear-gradient(135deg,#f093fb,#f5576c)!important;}
+.grad-3{background:linear-gradient(135deg,#4facfe,#00f2fe)!important;}
+.grad-0{background:linear-gradient(135deg,#a8edea,#fed6e3)!important;}
+.empty{grid-column:1/-1;text-align:center;padding:60px 20px;}
+.empty-icon{font-size:42px;margin-bottom:12px;opacity:.5;}
+.empty-text{font-size:14px;color:var(--text2);}
+.empty-link{color:var(--primary);font-size:13px;margin-top:8px;cursor:pointer;display:inline-block;}
+.tabbar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:500px;background:#fff;display:flex;justify-content:space-around;align-items:center;padding:8px 0 12px;box-shadow:0 -2px 12px rgba(0,0,0,.05);z-index:100;}
+.tab-item{display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;color:var(--text3);font-size:11px;flex:1;}
+.tab-item svg{width:22px;height:22px;}
+.tab-item.active{color:var(--primary);}
+.fab{position:fixed;right:calc(50% - 240px);bottom:90px;width:50px;height:50px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(46,180,168,.4);cursor:pointer;z-index:99;touch-action:none;user-select:none;}
+@media(max-width:520px){.fab{right:16px;}}
+.fab svg{width:22px;height:22px;}
+.fab-badge{position:absolute;top:-4px;right:-4px;background:var(--danger);color:#fff;font-size:10px;min-width:18px;height:18px;border-radius:9px;display:none;align-items:center;justify-content:center;padding:0 4px;font-weight:600;}
+.mask{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:200;display:none;align-items:flex-end;justify-content:center;}
+.mask.show{display:flex;}
+.sheet{background:#fff;width:100%;max-width:500px;max-height:85vh;border-radius:16px 16px 0 0;overflow:hidden;display:flex;flex-direction:column;animation:slideUp .3s ease;}
 @keyframes slideUp{from{transform:translateY(100%);}to{transform:translateY(0);}}
-.modal-header{padding:16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);flex-shrink:0;}
-.modal-title{font-size:16px;font-weight:600;}
-.modal-close{cursor:pointer;color:var(--text-secondary);font-size:20px;line-height:1;padding:4px;}
-.modal-body{flex:1;overflow-y:auto;padding:16px;}
-
-/* 购物车弹窗 */
+.sheet-head{padding:16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);flex-shrink:0;}
+.sheet-title{font-size:16px;font-weight:600;}
+.sheet-close{cursor:pointer;color:var(--text2);font-size:22px;line-height:1;padding:4px;}
+.sheet-body{flex:1;overflow-y:auto;padding:16px;}
+.sheet-foot{padding:14px 16px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:12px;}
+.sheet-total{font-size:16px;font-weight:700;}
+.sheet-total span{color:var(--primary);}
+.sheet-btn{background:var(--primary);color:#fff;border:none;padding:11px 28px;border-radius:var(--radius-btn);font-size:14px;cursor:pointer;font-weight:600;}
+.sheet-btn:disabled{background:#ddd;cursor:not-allowed;}
 .cart-item{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);}
 .cart-item:last-child{border-bottom:none;}
-.cart-item-img{width:50px;height:50px;border-radius:8px;overflow:hidden;background:#f0f0f0;flex-shrink:0;position:relative;}
-.cart-item-img img{width:100%;height:100%;object-fit:cover;display:block;}
-.cart-item-img .fallback{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;text-align:center;padding:2px;position:absolute;top:0;left:0;}
-.cart-item-info{flex:1;min-width:0;}
-.cart-item-name{font-size:14px;font-weight:500;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.cart-item-price{font-size:13px;color:var(--primary);font-weight:600;}
-.cart-item-qty{display:flex;align-items:center;gap:8px;flex-shrink:0;}
-.cart-qty-btn{width:24px;height:24px;border-radius:50%;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;color:var(--text);}
-.cart-qty-num{font-size:14px;min-width:20px;text-align:center;}
-.cart-footer{padding:16px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
-.cart-total{font-size:16px;font-weight:700;color:var(--text);}
-.cart-total span{color:var(--primary);}
-.cart-submit{background:var(--primary);color:#fff;border:none;padding:10px 24px;border-radius:20px;font-size:14px;cursor:pointer;font-weight:600;}
-.cart-submit:disabled{background:#ccc;cursor:not-allowed;}
-
-/* 商品详情页（全屏） */
-.detail-page{position:fixed;top:0;left:0;right:0;bottom:0;background:#fff;z-index:300;display:none;flex-direction:column;overflow-y:auto;}
-.detail-page.show{display:flex;}
-.detail-hero{width:100%;height:280px;position:relative;overflow:hidden;background:#f0f0f0;flex-shrink:0;}
+.cart-img{width:54px;height:54px;border-radius:10px;overflow:hidden;background:#f0f0f0;flex-shrink:0;position:relative;}
+.cart-img img{width:100%;height:100%;object-fit:cover;display:block;}
+.cart-img .fallback{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;text-align:center;padding:2px;position:absolute;top:0;left:0;}
+.cart-info{flex:1;min-width:0;}
+.cart-name{font-size:14px;font-weight:500;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cart-code{font-size:12px;color:var(--text2);}
+.cart-qty{display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.qty-btn{width:26px;height:26px;border-radius:50%;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:15px;line-height:1;display:flex;align-items:center;justify-content:center;color:var(--text);}
+.qty-num{font-size:14px;min-width:20px;text-align:center;font-weight:600;}
+.form-group{margin-bottom:16px;}
+.form-label{font-size:13px;color:var(--text2);margin-bottom:6px;display:block;}
+.form-input{width:100%;padding:11px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:14px;outline:none;transition:border-color .2s;background:#fff;}
+.form-input:focus{border-color:var(--primary);}
+.form-textarea{width:100%;padding:11px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:14px;outline:none;resize:vertical;min-height:70px;font-family:inherit;background:#fff;}
+.form-textarea:focus{border-color:var(--primary);}
+.page{position:fixed;top:0;left:50%;transform:translateX(-50%);width:100%;max-width:500px;height:100vh;background:var(--bg);z-index:300;display:none;flex-direction:column;overflow-y:auto;}
+.page.show{display:flex;}
+.page-head{background:#fff;padding:14px 16px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:10;box-shadow:0 1px 4px rgba(0,0,0,.04);flex-shrink:0;}
+.page-back{width:36px;height:36px;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;}
+.page-title-wrap{flex:1;min-width:0;}
+.page-title{font-size:18px;font-weight:700;}
+.page-sub{font-size:12px;color:var(--text2);margin-top:2px;}
+.page-body{flex:1;padding:16px;}
+.detail-hero{width:100%;aspect-ratio:1/1;position:relative;overflow:hidden;background:#f0f0f0;flex-shrink:0;}
 .detail-hero img{width:100%;height:100%;object-fit:cover;display:block;}
-.detail-hero .fallback{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:36px;font-weight:700;text-shadow:0 4px 16px rgba(0,0,0,0.3);position:absolute;top:0;left:0;padding:8px;text-align:center;}
-.detail-back{position:absolute;top:16px;left:16px;width:36px;height:36px;border-radius:50%;background:rgba(0,0,0,0.4);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:2;}
-.detail-body{flex:1;padding:16px;}
-.detail-code{font-size:12px;color:var(--text-secondary);margin-bottom:6px;}
+.detail-hero .fallback{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:32px;font-weight:700;text-align:center;padding:16px;position:absolute;top:0;left:0;}
+.detail-back{position:absolute;top:16px;left:16px;width:38px;height:38px;border-radius:50%;background:rgba(0,0,0,.35);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:2;backdrop-filter:blur(4px);}
+.detail-content{flex:1;padding:16px;}
+.detail-code{font-size:13px;color:var(--text2);margin-bottom:6px;}
 .detail-name{font-size:22px;font-weight:700;margin-bottom:8px;}
-.detail-cat{display:inline-block;padding:3px 10px;border-radius:12px;background:var(--primary-light);color:var(--primary-dark);font-size:12px;margin-bottom:12px;}
-.detail-desc{font-size:14px;color:#666;line-height:1.6;margin-bottom:20px;}
-.detail-qty-wrap{display:flex;align-items:center;gap:12px;margin-bottom:20px;}
-.detail-qty-label{font-size:14px;color:var(--text-secondary);}
-.detail-qty-control{display:flex;align-items:center;gap:12px;}
+.detail-cat{display:inline-block;padding:3px 12px;border-radius:12px;background:var(--primary-light);color:var(--primary-dark);font-size:12px;margin-bottom:14px;}
+.detail-desc{font-size:14px;color:#666;line-height:1.7;margin-bottom:20px;}
+.detail-qty{display:flex;align-items:center;justify-content:space-between;background:#fff;border-radius:var(--radius-sm);padding:12px 16px;margin-bottom:20px;}
+.detail-qty-label{font-size:14px;color:var(--text);}
+.detail-qty-ctrl{display:flex;align-items:center;gap:14px;}
 .detail-qty-btn{width:30px;height:30px;border-radius:50%;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center;}
+.detail-qty-btn.plus{background:var(--primary);color:#fff;border-color:transparent;}
 .detail-qty-num{font-size:16px;font-weight:600;min-width:24px;text-align:center;}
-.detail-footer{position:sticky;bottom:0;background:#fff;padding:12px 16px;display:flex;gap:12px;box-shadow:0 -2px 10px rgba(0,0,0,0.05);flex-shrink:0;}
-.detail-btn{flex:1;padding:12px;border-radius:24px;font-size:15px;font-weight:600;cursor:pointer;border:none;}
-.detail-btn-cart{background:#f0f0f0;color:var(--text);}
-.detail-btn-buy{background:var(--primary);color:#fff;}
-
-/* 我的记录页面（全屏） */
-.record-page{position:fixed;top:0;left:0;right:0;bottom:0;background:#f5f6f8;z-index:300;display:none;flex-direction:column;overflow-y:auto;}
-.record-page.show{display:flex;}
-.record-header{background:#fff;padding:16px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:10;box-shadow:0 1px 4px rgba(0,0,0,0.05);flex-shrink:0;}
-.record-back{width:36px;height:36px;border-radius:50%;background:#f5f6f8;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;}
-.record-title-wrap{flex:1;}
-.record-title{font-size:18px;font-weight:700;}
-.record-subtitle{font-size:12px;color:var(--text-secondary);margin-top:2px;}
-.record-body{flex:1;padding:16px;}
-
-/* 订单卡片 */
-.order-card{background:#fff;border-radius:12px;padding:14px;margin-bottom:12px;display:flex;gap:12px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.04);}
-.order-card-left{flex:1;min-width:0;}
-.order-no{font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.order-status{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;margin-bottom:6px;}
+.detail-foot{position:sticky;bottom:0;background:#fff;padding:12px 16px;display:flex;gap:12px;box-shadow:0 -2px 10px rgba(0,0,0,.05);flex-shrink:0;}
+.detail-btn{flex:1;padding:12px;border-radius:var(--radius-btn);font-size:15px;font-weight:600;cursor:pointer;border:none;}
+.detail-btn.outline{background:#fff;color:var(--primary);border:1.5px solid var(--primary);}
+.detail-btn.solid{background:var(--primary);color:#fff;}
+.order-card{background:#fff;border-radius:var(--radius);padding:14px;margin-bottom:12px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.04);}
+.order-card-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;}
+.order-no{font-size:13px;font-weight:600;color:var(--text2);letter-spacing:.3px;}
+.order-status{padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600;flex-shrink:0;margin-left:8px;}
 .order-status.pending{background:#fff7e6;color:var(--warning);}
 .order-status.done{background:#f0f9eb;color:var(--success);}
-.order-time{font-size:11px;color:var(--text-secondary);margin-bottom:4px;}
-.order-count{font-size:11px;color:var(--text-secondary);}
-.order-card-right{display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;flex-shrink:0;}
-.order-imgs{display:flex;}
-.order-img-wrap{width:44px;height:44px;border-radius:8px;overflow:hidden;margin-left:-8px;border:2px solid #fff;background:#f0f0f0;position:relative;flex-shrink:0;}
-.order-img-wrap:first-child{margin-left:0;}
-.order-img-wrap img{width:100%;height:100%;object-fit:cover;display:block;}
-.order-img-wrap .fallback{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:9px;font-weight:700;text-align:center;padding:1px;position:absolute;top:0;left:0;}
-.order-total{font-size:16px;font-weight:700;color:var(--primary);margin-top:8px;}
-.order-total::before{content:'¥';font-size:12px;}
-
-/* 订单详情页（全屏） */
-.order-detail-page{position:fixed;top:0;left:0;right:0;bottom:0;background:#f5f6f8;z-index:400;display:none;flex-direction:column;overflow-y:auto;}
-.order-detail-page.show{display:flex;}
-.od-header{background:#fff;padding:16px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:10;box-shadow:0 1px 4px rgba(0,0,0,0.05);flex-shrink:0;}
-.od-back{width:36px;height:36px;border-radius:50%;background:#f5f6f8;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;}
-.od-title-wrap{flex:1;}
-.od-title{font-size:18px;font-weight:700;}
-.od-subtitle{font-size:12px;color:var(--text-secondary);margin-top:2px;}
-.od-body{flex:1;padding:16px;}
-.od-section{background:#fff;border-radius:12px;padding:14px;margin-bottom:12px;}
+.order-items{background:var(--bg);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:10px;}
+.order-item-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:13px;}
+.order-item-name{color:var(--text);}
+.order-item-code{color:var(--text2);font-size:12px;}
+.order-total-row{display:flex;justify-content:space-between;align-items:center;padding-top:8px;border-top:1px solid var(--border);}
+.order-total-label{font-size:13px;color:var(--text2);}
+.order-total-val{font-size:18px;font-weight:700;color:var(--primary);}
+.order-meta{font-size:12px;color:var(--text3);margin-top:8px;}
+.od-section{background:#fff;border-radius:var(--radius);padding:14px;margin-bottom:12px;}
 .od-section-title{font-size:14px;font-weight:600;margin-bottom:12px;color:var(--text);}
 .od-item{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);}
 .od-item:last-child{border-bottom:none;}
-.od-item-img{width:56px;height:56px;border-radius:8px;overflow:hidden;background:#f0f0f0;flex-shrink:0;position:relative;}
+.od-item-img{width:52px;height:52px;border-radius:10px;overflow:hidden;background:#f0f0f0;flex-shrink:0;position:relative;}
 .od-item-img img{width:100%;height:100%;object-fit:cover;display:block;}
-.od-item-img .fallback{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;text-align:center;padding:2px;position:absolute;top:0;left:0;}
+.od-item-img .fallback{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700;text-align:center;padding:2px;position:absolute;top:0;left:0;}
 .od-item-info{flex:1;min-width:0;}
-.od-item-name{font-size:14px;font-weight:500;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.od-item-qty{font-size:12px;color:var(--text-secondary);}
-.od-item-price{font-size:14px;font-weight:600;color:var(--text);flex-shrink:0;}
-.od-item-price::before{content:'¥';font-size:11px;}
-.od-info-row{display:flex;justify-content:space-between;padding:6px 0;font-size:13px;}
-.od-info-label{color:var(--text-secondary);}
-.od-info-value{color:var(--text);font-weight:500;max-width:60%;text-align:right;word-break:break-all;}
-.od-total-row{display:flex;justify-content:space-between;padding:10px 0 0;border-top:1px solid var(--border);margin-top:8px;font-size:15px;font-weight:700;}
-.od-total-value{color:var(--primary);}
-.od-total-value::before{content:'¥';font-size:12px;}
-
-/* 提交订单弹窗 */
-.order-form-group{margin-bottom:14px;}
-.order-form-label{font-size:13px;color:var(--text-secondary);margin-bottom:6px;display:block;}
-.order-form-input{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;outline:none;transition:border-color 0.2s;}
-.order-form-input:focus{border-color:var(--primary);}
-.order-form-textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;outline:none;resize:vertical;min-height:60px;font-family:inherit;}
-.order-form-textarea:focus{border-color:var(--primary);}
-
-/* 全局错误提示 */
-.error-banner{position:fixed;top:0;left:0;right:0;background:var(--danger);color:#fff;padding:10px 16px;font-size:13px;z-index:9999;display:none;word-break:break-all;}
-.error-banner.show{display:block;}
-
-/* Toast */
-.toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.75);color:#fff;padding:10px 20px;border-radius:8px;font-size:14px;z-index:9999;display:none;}
+.od-item-name{font-size:14px;font-weight:500;margin-bottom:3px;}
+.od-item-code{font-size:12px;color:var(--text2);}
+.od-item-sub{font-size:14px;font-weight:600;color:var(--text);flex-shrink:0;}
+.od-info-row{display:flex;justify-content:space-between;padding:7px 0;font-size:13px;align-items:flex-start;}
+.od-info-label{color:var(--text2);flex-shrink:0;display:flex;align-items:center;gap:6px;}
+.od-info-value{color:var(--text);font-weight:500;max-width:65%;text-align:right;word-break:break-all;}
+.od-total-row{display:flex;justify-content:space-between;padding:12px 0 0;border-top:1px solid var(--border);margin-top:8px;font-size:15px;font-weight:700;}
+.od-total-val{color:var(--primary);}
+.err-bar{position:fixed;top:0;left:0;right:0;background:var(--danger);color:#fff;padding:10px 16px;font-size:13px;z-index:9999;display:none;word-break:break-all;}
+.err-bar.show{display:block;}
+.toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.75);color:#fff;padding:10px 20px;border-radius:8px;font-size:14px;z-index:9999;display:none;max-width:80%;text-align:center;}
 .toast.show{display:block;}
 </style>
 </head>
 <body>
-
-<div class="error-banner" id="errorBanner"></div>
+<div class="err-bar" id="errBar"></div>
 <div class="toast" id="toast"></div>
-
-<!-- 首页 -->
-<div id="homePage">
+<div class="app" id="app">
+  <div class="barrage" id="barrage">
+    <span class="barrage-icon">📢</span>
+    <div class="barrage-text"><span class="barrage-scroll" id="barrageScroll"></span></div>
+    <span class="barrage-close" onclick="closeBarrage()">×</span>
+  </div>
   <div class="header">
     <h1>物品展示选择平台</h1>
-    <div class="subtitle">精选好物，随心选择</div>
+    <div class="sub">物品展示与信息登记平台</div>
   </div>
   <div class="search-wrap">
     <div class="search-box">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-      <input type="text" id="searchInput" placeholder="搜索物品..." oninput="onSearch(this.value)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="searchInput" placeholder="搜索物品关键词" oninput="onSearch(this.value)">
     </div>
   </div>
-  <div class="barrage-wrap" id="barrageWrap">
-    <div class="barrage-text" id="barrageText"></div>
-    <span class="barrage-close" onclick="closeBarrage()">×</span>
-  </div>
-  <div class="cat-tabs" id="catTabs"></div>
-  <div class="goods-list" id="goodsList"></div>
+  <div class="cats" id="cats"></div>
+  <div class="goods-grid" id="goodsGrid"></div>
 </div>
-
-<!-- 底部导航 -->
-<div class="bottom-nav">
-  <div class="nav-item active" onclick="switchTab('home')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+<div class="tabbar">
+  <div class="tab-item active" onclick="switchTab('home')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
     <span>首页</span>
   </div>
-  <div class="nav-item" onclick="switchTab('record')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+  <div class="tab-item" onclick="switchTab('record')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
     <span>我的记录</span>
   </div>
-  <div class="nav-item" onclick="switchTab('admin')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+  <div class="tab-item" onclick="switchTab('admin')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
     <span>管理入口</span>
   </div>
 </div>
-
-<!-- 浮动购物车按钮 -->
-<div class="fab-cart" id="fabCart" onclick="openCart()">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+<div class="fab" id="fab" onclick="openCart()">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
   <span class="fab-badge" id="fabBadge">0</span>
 </div>
-
-<!-- 购物车弹窗 -->
-<div class="modal-mask" id="cartModal">
-  <div class="modal-content">
-    <div class="modal-header">
-      <span class="modal-title">意向清单</span>
-      <span class="modal-close" onclick="closeCart()">×</span>
-    </div>
-    <div class="modal-body" id="cartBody"></div>
-    <div class="cart-footer">
-      <div class="cart-total">合计：<span id="cartTotal">¥0</span></div>
-      <button class="cart-submit" id="cartSubmit" onclick="openOrderForm()">提交登记</button>
-    </div>
+<div class="mask" id="cartMask">
+  <div class="sheet">
+    <div class="sheet-head"><span class="sheet-title">意向清单</span><span class="sheet-close" onclick="closeCart()">×</span></div>
+    <div class="sheet-body" id="cartBody"></div>
+    <div class="sheet-foot"><div class="sheet-total">合计：<span id="cartTotal">0</span></div><button class="sheet-btn" id="cartSubmit" onclick="openOrderForm()">提交登记</button></div>
   </div>
 </div>
-
-<!-- 商品详情页 -->
-<div class="detail-page" id="detailPage">
-  <div class="detail-hero" id="detailHero">
-    <div class="detail-back" onclick="closeDetail()">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+<div class="mask" id="formMask">
+  <div class="sheet">
+    <div class="sheet-head"><span class="sheet-title">填写登记信息</span><span class="sheet-close" onclick="closeOrderForm()">×</span></div>
+    <div class="sheet-body">
+      <div class="form-group"><label class="form-label">姓名</label><input type="text" class="form-input" id="fName" placeholder="请输入姓名"></div>
+      <div class="form-group"><label class="form-label">联系电话</label><input type="tel" class="form-input" id="fPhone" placeholder="请输入联系电话"></div>
+      <div class="form-group"><label class="form-label">联系地址</label><input type="text" class="form-input" id="fAddr" placeholder="请输入联系地址"></div>
+      <div class="form-group"><label class="form-label">备注（选填）</label><textarea class="form-textarea" id="fNote" placeholder="有什么需要说明的"></textarea></div>
     </div>
+    <div class="sheet-foot"><div class="sheet-total">合计：<span id="formTotal">0</span></div><button class="sheet-btn" onclick="submitOrder()">确认提交</button></div>
   </div>
-  <div class="detail-body">
+</div>
+<div class="page" id="detailPage">
+  <div class="detail-hero" id="detailHero"><div class="detail-back" onclick="closeDetail()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg></div></div>
+  <div class="detail-content">
     <div class="detail-code" id="detailCode"></div>
     <div class="detail-name" id="detailName"></div>
     <div class="detail-cat" id="detailCat"></div>
     <div class="detail-desc" id="detailDesc"></div>
-    <div class="detail-qty-wrap">
-      <span class="detail-qty-label">数量</span>
-      <div class="detail-qty-control">
-        <button class="detail-qty-btn" onclick="changeDetailQty(-1)">−</button>
-        <span class="detail-qty-num" id="detailQty">1</span>
-        <button class="detail-qty-btn" onclick="changeDetailQty(1)">+</button>
-      </div>
-    </div>
+    <div class="detail-qty"><span class="detail-qty-label">数量</span><div class="detail-qty-ctrl"><button class="detail-qty-btn" onclick="changeDetailQty(-1)">−</button><span class="detail-qty-num" id="detailQty">1</span><button class="detail-qty-btn plus" onclick="changeDetailQty(1)">+</button></div></div>
   </div>
-  <div class="detail-footer">
-    <button class="detail-btn detail-btn-cart" onclick="addDetailToCart()">加入清单</button>
-    <button class="detail-btn detail-btn-buy" onclick="detailToOrder()">立即登记</button>
-  </div>
+  <div class="detail-foot"><button class="detail-btn outline" onclick="addDetailToCart()">加入清单</button><button class="detail-btn solid" onclick="detailToOrder()">提交登记</button></div>
 </div>
-
-<!-- 我的记录页面 -->
-<div class="record-page" id="recordPage">
-  <div class="record-header">
-    <div class="record-back" onclick="closeRecord()">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
-    </div>
-    <div class="record-title-wrap">
-      <div class="record-title">我的记录</div>
-      <div class="record-subtitle">查看您的登记记录</div>
-    </div>
-  </div>
-  <div class="record-body" id="recordBody"></div>
+<div class="page" id="recordPage">
+  <div class="page-head"><div class="page-back" onclick="closeRecord()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg></div><div class="page-title-wrap"><div class="page-title">我的记录</div><div class="page-sub">查看您提交过的意向记录</div></div></div>
+  <div class="page-body" id="recordBody"></div>
 </div>
-
-<!-- 订单详情页 -->
-<div class="order-detail-page" id="orderDetailPage">
-  <div class="od-header">
-    <div class="od-back" onclick="closeOrderDetail()">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
-    </div>
-    <div class="od-title-wrap">
-      <div class="od-title">登记详情</div>
-      <div class="od-subtitle" id="odSubtitle"></div>
-    </div>
-  </div>
-  <div class="od-body" id="odBody"></div>
+<div class="page" id="odPage">
+  <div class="page-head"><div class="page-back" onclick="closeOd()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg></div><div class="page-title-wrap"><div class="page-title">登记详情</div><div class="page-sub" id="odSub"></div></div></div>
+  <div class="page-body" id="odBody"></div>
 </div>
-
-<!-- 提交订单弹窗 -->
-<div class="modal-mask" id="orderFormModal">
-  <div class="modal-content">
-    <div class="modal-header">
-      <span class="modal-title">填写登记信息</span>
-      <span class="modal-close" onclick="closeOrderForm()">×</span>
-    </div>
-    <div class="modal-body">
-      <div class="order-form-group">
-        <label class="order-form-label">姓名</label>
-        <input type="text" class="order-form-input" id="formName" placeholder="请输入姓名">
-      </div>
-      <div class="order-form-group">
-        <label class="order-form-label">联系电话</label>
-        <input type="tel" class="order-form-input" id="formPhone" placeholder="请输入联系电话">
-      </div>
-      <div class="order-form-group">
-        <label class="order-form-label">联系地址</label>
-        <input type="text" class="order-form-input" id="formAddr" placeholder="请输入联系地址">
-      </div>
-      <div class="order-form-group">
-        <label class="order-form-label">备注（选填）</label>
-        <textarea class="order-form-textarea" id="formNote" placeholder="有什么需要说明的"></textarea>
-      </div>
-    </div>
-    <div class="cart-footer">
-      <div class="cart-total">合计：<span id="formTotal">¥0</span></div>
-      <button class="cart-submit" onclick="submitOrder()">确认提交</button>
-    </div>
-  </div>
-</div>
-
 <script>
-// 全局错误捕获
-window.onerror = function(msg, url, line, col, error) {
-  var banner = document.getElementById('errorBanner');
-  if (banner) {
-    banner.innerText = '错误：' + msg + ' (行' + line + ')';
-    banner.classList.add('show');
-  }
-  return false;
-};
-
-// 设备ID
-var deviceId = localStorage.getItem('device_id') || ('dev_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6));
-localStorage.setItem('device_id', deviceId);
-
-// 默认数据
-var DEFAULT_DATA = {
+window.onerror = function(msg, url, line, col, err){ var bar = document.getElementById('errBar'); if(bar){ bar.innerText = '错误：' + msg + ' (行' + line + ')'; bar.className = 'err-bar show'; } return false; };
+var deviceId = localStorage.getItem('device_id');
+if(!deviceId){ deviceId = 'dev_' + Date.now() + '_' + Math.random().toString(36).substr(2,6); localStorage.setItem('device_id', deviceId); }
+var DEFAULT = {
   goods: [
-    {id:1, catId:'aixi', name:'爱喜酸奶', code:'No.23', price:18, desc:'经典酸奶口味，清爽顺滑，爱喜系列经典款', img:'https://picsum.photos/seed/aixi-yogurt/400/300', sellout:false},
-    {id:2, catId:'aixi', name:'爱喜香芋', code:'No.23', price:18, desc:'浓郁香芋风味，绵密细腻，爱喜系列人气款', img:'https://picsum.photos/seed/aixi-taro/400/300', sellout:false},
-    {id:3, catId:'aixi', name:'爱喜茉莉', code:'No.23', price:20, desc:'清新茉莉花香，回味悠长，爱喜系列高端款', img:'https://picsum.photos/seed/aixi-jasmine/400/300', sellout:false},
-    {id:4, catId:'alishan', name:'阿里山天韵', code:'No.38', price:25, desc:'阿里山经典系列，口感醇厚，阿里山招牌款', img:'https://picsum.photos/seed/alishan-tianyun/400/300', sellout:false},
-    {id:5, catId:'alishan', name:'阿里山芒果', code:'No.38', price:22, desc:'热带芒果风味，果香四溢，阿里山果味系列', img:'https://picsum.photos/seed/alishan-mango/400/300', sellout:false},
-    {id:6, catId:'baile', name:'百乐原味', code:'No.15', price:15, desc:'百乐经典原味，简约之选，百乐入门款', img:'https://picsum.photos/seed/baile-original/400/300', sellout:false}
+    {id:1, catId:'aixi', name:'爱喜酸奶', code:'No.23', desc:'经典酸奶口味，清爽顺滑', img:'https://picsum.photos/seed/aixi-yogurt/400/400', sellout:true},
+    {id:2, catId:'aixi', name:'爱喜香芋', code:'No.23', desc:'浓郁香芋风味，绵密细腻', img:'https://picsum.photos/seed/aixi-taro/400/400', sellout:false},
+    {id:3, catId:'aixi', name:'爱喜茉莉', code:'No.23', desc:'清新茉莉花香，回味悠长', img:'https://picsum.photos/seed/aixi-jasmine/400/400', sellout:false},
+    {id:4, catId:'alishan', name:'阿里山天韵', code:'No.38', desc:'阿里山经典系列，口感醇厚', img:'https://picsum.photos/seed/alishan-tianyun/400/400', sellout:false},
+    {id:5, catId:'alishan', name:'阿里山芒果', code:'No.38', desc:'热带芒果风味，果香四溢', img:'https://picsum.photos/seed/alishan-mango/400/400', sellout:false},
+    {id:6, catId:'baile', name:'百乐原味', code:'No.15', desc:'百乐经典原味，简约之选', img:'https://picsum.photos/seed/baile-original/400/400', sellout:false}
   ],
-  categories: [
-    {id:'all', name:'全部'},
-    {id:'aixi', name:'爱喜'},
-    {id:'alishan', name:'阿里山'},
-    {id:'baile', name:'百乐'}
-  ],
-  bulletins: [
-    {id:1, content:'欢迎使用物品展示选择平台，精选好物等你来选', enable:true}
-  ],
-  cart: [],
-  orders: [],
-  adminAccounts: [
-    {username:'2384214009', password:'13727733582q.'},
-    {username:'admin', password:'admin123'}
-  ]
+  categories: [{id:'all',name:'全部',sort:0},{id:'aixi',name:'爱喜',sort:1},{id:'alishan',name:'阿里山',sort:2},{id:'baile',name:'百乐',sort:3}],
+  bulletins: [{id:1, content:'欢迎使用物品展示选择平台，精选好物等你来选', enable:true}],
+  cart: [], orders: [],
+  adminAccounts: [{username:'2384214009',pwd:'13727733582q',role:'super'},{username:'admin',pwd:'admin123',role:'normal'}]
 };
-
-// 获取数据（自动修复）
-function getDb() {
-  try {
+function getDb(){
+  try{
     var raw = localStorage.getItem('shop_db');
-    if (!raw) {
-      localStorage.setItem('shop_db', JSON.stringify(DEFAULT_DATA));
-      return JSON.parse(JSON.stringify(DEFAULT_DATA));
-    }
-    var db = JSON.parse(raw);
-    var changed = false;
-    if (!Array.isArray(db.goods) || db.goods.length === 0) {
-      db.goods = JSON.parse(JSON.stringify(DEFAULT_DATA.goods));
-      changed = true;
-    }
-    if (!Array.isArray(db.categories) || db.categories.length === 0) {
-      db.categories = JSON.parse(JSON.stringify(DEFAULT_DATA.categories));
-      changed = true;
-    }
-    if (!Array.isArray(db.bulletins)) {
-      db.bulletins = JSON.parse(JSON.stringify(DEFAULT_DATA.bulletins));
-      changed = true;
-    }
-    if (!Array.isArray(db.cart)) { db.cart = []; changed = true; }
-    if (!Array.isArray(db.orders)) { db.orders = []; changed = true; }
-    if (!Array.isArray(db.adminAccounts) || db.adminAccounts.length === 0) {
-      db.adminAccounts = JSON.parse(JSON.stringify(DEFAULT_DATA.adminAccounts));
-      changed = true;
-    }
-    if (changed) localStorage.setItem('shop_db', JSON.stringify(db));
+    if(!raw){ localStorage.setItem('shop_db', JSON.stringify(DEFAULT)); return JSON.parse(JSON.stringify(DEFAULT)); }
+    var db = JSON.parse(raw); var changed = false;
+    if(!Array.isArray(db.goods) || db.goods.length === 0){ db.goods = JSON.parse(JSON.stringify(DEFAULT.goods)); changed = true; }
+    if(!Array.isArray(db.categories) || db.categories.length === 0){ db.categories = JSON.parse(JSON.stringify(DEFAULT.categories)); changed = true; }
+    if(!Array.isArray(db.bulletins)){ db.bulletins = JSON.parse(JSON.stringify(DEFAULT.bulletins)); changed = true; }
+    if(!Array.isArray(db.cart)){ db.cart = []; changed = true; }
+    if(!Array.isArray(db.orders)){ db.orders = []; changed = true; }
+    if(!Array.isArray(db.adminAccounts) || db.adminAccounts.length === 0){ db.adminAccounts = JSON.parse(JSON.stringify(DEFAULT.adminAccounts)); changed = true; }
+    if(changed) localStorage.setItem('shop_db', JSON.stringify(db));
     return db;
-  } catch(e) {
-    localStorage.setItem('shop_db', JSON.stringify(DEFAULT_DATA));
-    return JSON.parse(JSON.stringify(DEFAULT_DATA));
-  }
+  }catch(e){ localStorage.setItem('shop_db', JSON.stringify(DEFAULT)); return JSON.parse(JSON.stringify(DEFAULT)); }
 }
-
-function saveDb(db) {
-  localStorage.setItem('shop_db', JSON.stringify(db));
+function saveDb(db){ localStorage.setItem('shop_db', JSON.stringify(db)); }
+function getGrad(catId){ if(catId==='aixi')return'grad-1'; if(catId==='alishan')return'grad-2'; if(catId==='baile')return'grad-3'; return'grad-0'; }
+function getCatName(catId){ var db=getDb(); var c=db.categories.find(function(x){return x.id===catId;}); return c?c.name:''; }
+function getGoodsById(id){ var db=getDb(); return db.goods.find(function(g){return g.id===id;}); }
+function getGoodsByName(name){ var db=getDb(); return db.goods.find(function(g){return g.name===name;}); }
+function showToast(msg){ var t=document.getElementById('toast'); t.innerText=msg; t.className='toast show'; setTimeout(function(){t.className='toast';},2000); }
+function codeToNum(code){ if(!code)return 0; var n=parseFloat(String(code).replace(/[^0-9.]/g,'')); return isNaN(n)?0:n; }
+var curCat='all', searchKey='', curDetailId=null, detailQty=1;
+function init(){ try{ renderBarrage(); renderCats(); renderGoods(); refreshBadge(); initFabDrag(); }catch(e){ console.error('init error',e); } }
+function renderBarrage(){
+  var db=getDb(); var wrap=document.getElementById('barrage'); var scroll=document.getElementById('barrageScroll');
+  var closed=sessionStorage.getItem('barrage_closed'); var list=db.bulletins.filter(function(b){return b.enable===true;});
+  if(list.length===0 || closed==='1'){ wrap.style.display='none'; return; }
+  wrap.style.display='flex'; var text=list.map(function(b){return b.content;}).join('   |   ');
+  scroll.innerText=text+'        '+text;
 }
-
-// 工具函数
-function getGradClass(catId) {
-  if (catId === 'aixi') return 'grad-aixi';
-  if (catId === 'alishan') return 'grad-alishan';
-  if (catId === 'baile') return 'grad-baile';
-  return 'grad-default';
-}
-
-function getCatIdByName(name) {
-  var item = DEFAULT_DATA.goods.find(function(g){ return g.name === name; });
-  return item ? item.catId : '';
-}
-
-function getGoodsImgByName(name) {
-  var item = DEFAULT_DATA.goods.find(function(g){ return g.name === name; });
-  return item ? item.img : '';
-}
-
-function showToast(msg) {
-  var toast = document.getElementById('toast');
-  toast.innerText = msg;
-  toast.classList.add('show');
-  setTimeout(function(){ toast.classList.remove('show'); }, 2000);
-}
-
-// 状态
-var currentCat = 'all';
-var searchKey = '';
-var currentDetailId = null;
-var detailQty = 1;
-
-// 初始化
-function init() {
-  try {
-    renderBulletin();
-    renderCatTabs();
-    renderGoods();
-    refreshCartBadge();
-    initFabDrag();
-  } catch(e) {
-    console.error('Init error:', e);
-  }
-}
-
-// 公告
-function renderBulletin() {
-  var db = getDb();
-  var wrap = document.getElementById('barrageWrap');
-  var txtDom = document.getElementById('barrageText');
-  var showClosed = sessionStorage.getItem('barrage_closed');
-  var activeList = db.bulletins.filter(function(b){ return b.enable === true; });
-  if (activeList.length === 0 || showClosed === '1') {
-    wrap.style.display = 'none';
-    return;
-  }
-  wrap.style.display = 'flex';
-  var text = activeList.map(function(i){ return i.content; }).join('  |  ');
-  txtDom.innerHTML = '<span class="barrage-scroll">' + text + '　　　　　' + text + '</span>';
-}
-
-function closeBarrage() {
-  sessionStorage.setItem('barrage_closed', '1');
-  document.getElementById('barrageWrap').style.display = 'none';
-}
-
-// 分类标签
-function renderCatTabs() {
-  var db = getDb();
-  var wrap = document.getElementById('catTabs');
-  wrap.innerHTML = '';
-  db.categories.forEach(function(cat) {
-    var item = document.createElement('div');
-    item.className = 'cat-item' + (currentCat === cat.id ? ' active' : '');
-    item.innerText = cat.name;
-    item.onclick = function() {
-      currentCat = cat.id;
-      renderCatTabs();
-      renderGoods();
-    };
-    wrap.appendChild(item);
+function closeBarrage(){ sessionStorage.setItem('barrage_closed','1'); document.getElementById('barrage').style.display='none'; }
+function renderCats(){
+  var db=getDb(); var wrap=document.getElementById('cats'); wrap.innerHTML='';
+  db.categories.forEach(function(c){
+    var el=document.createElement('div'); el.className='cat'+(curCat===c.id?' active':''); el.innerText=c.name;
+    el.onclick=function(){ curCat=c.id; renderCats(); renderGoods(); };
+    wrap.appendChild(el);
   });
 }
-
-// 搜索
-function onSearch(val) {
-  searchKey = val.trim().toLowerCase();
-  renderGoods();
-}
-
-// 商品列表
-function renderGoods() {
-  var db = getDb();
-  var wrap = document.getElementById('goodsList');
-  wrap.innerHTML = '';
-  var list = db.goods;
-  if (currentCat !== 'all') {
-    list = list.filter(function(g){ return g.catId === currentCat; });
-  }
-  if (searchKey) {
-    list = list.filter(function(g){ return g.name.toLowerCase().indexOf(searchKey) !== -1; });
-  }
-  if (list.length === 0) {
-    wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-text">暂无相关物品</div></div>';
-    return;
-  }
-  list.forEach(function(item) {
-    var card = document.createElement('div');
-    card.className = 'goods-card';
-    var isSellout = item.sellout === true;
-    card.onclick = function(e) {
-      if (e.target.closest('.cart-add')) return;
-      openDetail(item.id);
-    };
-    var gradClass = getGradClass(item.catId);
-    var imgHtml = isSellout ? '<div class="sellout-tag">已售罄</div>' : '';
-    imgHtml += '<div class="goods-img-wrap ' + gradClass + '">';
-    imgHtml += '<img src="' + item.img + '" alt="' + item.name + '" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">';
-    imgHtml += '<div class="goods-img-fallback" style="display:none;">' + item.name + '</div>';
-    imgHtml += '</div>';
-    card.innerHTML = imgHtml +
-      '<div class="goods-info">' +
-        '<div class="goods-name">' + item.name + '</div>' +
-        (item.code ? '<div class="goods-code">' + item.code + '</div>' : '') +
-        '<div class="goods-bottom">' +
-          '<div class="goods-price">' + item.price + '</div>' +
-          '<button class="cart-add" onclick="event.stopPropagation();addToCart(' + item.id + ')">+</button>' +
-        '</div>' +
-      '</div>';
+function onSearch(val){ searchKey=val.trim().toLowerCase(); renderGoods(); }
+function renderGoods(){
+  var db=getDb(); var wrap=document.getElementById('goodsGrid'); wrap.innerHTML='';
+  var list=db.goods;
+  if(curCat!=='all'){ list=list.filter(function(g){return g.catId===curCat;}); }
+  if(searchKey){ list=list.filter(function(g){return g.name.toLowerCase().indexOf(searchKey)!==-1;}); }
+  if(list.length===0){ wrap.innerHTML='<div class="empty"><div class="empty-icon">🔍</div><div class="empty-text">暂无相关物品</div></div>'; return; }
+  list.forEach(function(item){
+    var card=document.createElement('div'); card.className='goods-card';
+    var grad=getGrad(item.catId); var imgHtml='';
+    if(item.sellout){ imgHtml+='<div class="sellout-tag">无库存</div>'; }
+    imgHtml+='<div class="goods-img '+grad+'">';
+    imgHtml+='<img src="'+item.img+'" alt="'+item.name+'" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">';
+    imgHtml+='<div class="fallback" style="display:none;">'+item.name+'</div></div>';
+    var btnHtml=item.sellout?'<div class="goods-btn disabled">暂无库存</div>':'<div class="goods-btn active" onclick="event.stopPropagation();addToCart('+item.id+')">加入清单</div>';
+    card.innerHTML=imgHtml+'<div class="goods-info"><div class="goods-name">'+item.name+'</div>'+(item.code?'<div class="goods-code">编号 '+item.code+'</div>':'')+btnHtml+'</div>';
+    card.onclick=function(){ if(!item.sellout){ openDetail(item.id); } };
     wrap.appendChild(card);
   });
 }
-
-// 商品详情
-function openDetail(goodsId) {
-  var db = getDb();
-  var item = db.goods.find(function(g){ return g.id === goodsId; });
-  if (!item) return;
-  currentDetailId = goodsId;
-  detailQty = 1;
-  var gradClass = getGradClass(item.catId);
-  var hero = document.getElementById('detailHero');
-  hero.className = 'detail-hero ' + gradClass;
-  var backBtn = hero.querySelector('.detail-back');
-  hero.innerHTML = '';
-  hero.appendChild(backBtn);
-  var img = document.createElement('img');
-  img.src = item.img;
-  img.alt = item.name;
-  img.onerror = function() {
-    this.style.display = 'none';
-    this.nextElementSibling.style.display = 'flex';
-  };
-  hero.appendChild(img);
-  var fb = document.createElement('div');
-  fb.className = 'fallback';
-  fb.style.display = 'none';
-  fb.innerText = item.name;
-  hero.appendChild(fb);
-  document.getElementById('detailCode').innerText = item.code ? item.code : '';
-  document.getElementById('detailName').innerText = item.name;
-  var cat = db.categories.find(function(c){ return c.id === item.catId; });
-  document.getElementById('detailCat').innerText = cat ? cat.name : '';
-  document.getElementById('detailDesc').innerText = item.desc || '';
-  document.getElementById('detailQty').innerText = '1';
+function openDetail(id){
+  var g=getGoodsById(id); if(!g)return; curDetailId=id; detailQty=1;
+  var hero=document.getElementById('detailHero'); var grad=getGrad(g.catId); hero.className='detail-hero '+grad;
+  var back=hero.querySelector('.detail-back'); hero.innerHTML=''; hero.appendChild(back);
+  var img=document.createElement('img'); img.src=g.img; img.alt=g.name; img.onerror=function(){this.style.display='none';this.nextElementSibling.style.display='flex';}; hero.appendChild(img);
+  var fb=document.createElement('div'); fb.className='fallback'; fb.style.display='none'; fb.innerText=g.name; hero.appendChild(fb);
+  document.getElementById('detailCode').innerText=g.code?'编号 '+g.code:'';
+  document.getElementById('detailName').innerText=g.name;
+  document.getElementById('detailCat').innerText=getCatName(g.catId);
+  document.getElementById('detailDesc').innerText=g.desc||'暂无描述';
+  document.getElementById('detailQty').innerText='1';
   document.getElementById('detailPage').classList.add('show');
 }
-
-function closeDetail() {
-  document.getElementById('detailPage').classList.remove('show');
+function closeDetail(){ document.getElementById('detailPage').classList.remove('show'); }
+function changeDetailQty(d){ detailQty=Math.max(1,detailQty+d); document.getElementById('detailQty').innerText=detailQty; }
+function addDetailToCart(){ if(curDetailId){ addToCart(curDetailId,detailQty); closeDetail(); } }
+function detailToOrder(){ if(curDetailId){ addToCart(curDetailId,detailQty); closeDetail(); openOrderForm(); } }
+function addToCart(id,qty){
+  qty=qty||1; var g=getGoodsById(id); if(!g)return; var db=getDb();
+  var exist=db.cart.find(function(c){return c.goodsId===id;});
+  if(exist){ exist.qty+=qty; } else { db.cart.push({goodsId:id,name:g.name,code:g.code,catId:g.catId,img:g.img,qty:qty}); }
+  saveDb(db); refreshBadge(); showToast('已加入清单');
 }
-
-function changeDetailQty(delta) {
-  detailQty = Math.max(1, detailQty + delta);
-  document.getElementById('detailQty').innerText = detailQty;
+function changeCartQty(id,d){
+  var db=getDb(); var item=db.cart.find(function(c){return c.goodsId===id;}); if(!item)return;
+  item.qty+=d; if(item.qty<=0){ db.cart=db.cart.filter(function(c){return c.goodsId!==id;}); }
+  saveDb(db); renderCart(); refreshBadge();
 }
-
-function addDetailToCart() {
-  if (!currentDetailId) return;
-  addToCart(currentDetailId, detailQty);
-  closeDetail();
+function refreshBadge(){
+  var db=getDb(); var count=0; db.cart.forEach(function(c){count+=c.qty;});
+  var badge=document.getElementById('fabBadge');
+  if(count>0){ badge.innerText=count>99?'99+':count; badge.style.display='flex'; } else { badge.style.display='none'; }
 }
-
-function detailToOrder() {
-  if (!currentDetailId) return;
-  addToCart(currentDetailId, detailQty);
-  closeDetail();
-  openOrderForm();
-}
-
-// 购物车
-function addToCart(goodsId, qty) {
-  qty = qty || 1;
-  var db = getDb();
-  var item = db.goods.find(function(g){ return g.id === goodsId; });
-  if (!item) return;
-  var exist = db.cart.find(function(c){ return c.goodsId === goodsId; });
-  if (exist) {
-    exist.qty += qty;
-  } else {
-    db.cart.push({goodsId: goodsId, name: item.name, price: item.price, img: item.img, catId: item.catId, qty: qty});
-  }
-  saveDb(db);
-  refreshCartBadge();
-  showToast('已加入清单');
-}
-
-function changeCartQty(goodsId, delta) {
-  var db = getDb();
-  var item = db.cart.find(function(c){ return c.goodsId === goodsId; });
-  if (!item) return;
-  item.qty += delta;
-  if (item.qty <= 0) {
-    db.cart = db.cart.filter(function(c){ return c.goodsId !== goodsId; });
-  }
-  saveDb(db);
-  renderCart();
-  refreshCartBadge();
-}
-
-function refreshCartBadge() {
-  var db = getDb();
-  var count = 0;
-  db.cart.forEach(function(c){ count += c.qty; });
-  var badge = document.getElementById('fabBadge');
-  if (count > 0) {
-    badge.innerText = count > 99 ? '99+' : count;
-    badge.style.display = 'flex';
-  } else {
-    badge.style.display = 'none';
-  }
-}
-
-function openCart() {
-  renderCart();
-  document.getElementById('cartModal').classList.add('show');
-}
-
-function closeCart() {
-  document.getElementById('cartModal').classList.remove('show');
-}
-
-function renderCart() {
-  var db = getDb();
-  var body = document.getElementById('cartBody');
-  if (db.cart.length === 0) {
-    body.innerHTML = '<div class="empty-state"><div class="empty-icon">🛒</div><div class="empty-text">清单为空，快去选择吧</div></div>';
-    document.getElementById('cartTotal').innerText = '¥0';
-    document.getElementById('cartSubmit').disabled = true;
-    return;
-  }
-  var total = 0;
-  var html = '';
-  db.cart.forEach(function(item) {
-    var sub = item.price * item.qty;
-    total += sub;
-    var gradClass = getGradClass(item.catId);
-    html += '<div class="cart-item">' +
-      '<div class="cart-item-img ' + gradClass + '">' +
-        '<img src="' + item.img + '" alt="' + item.name + '" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">' +
-        '<div class="fallback" style="display:none;">' + item.name + '</div>' +
-      '</div>' +
-      '<div class="cart-item-info">' +
-        '<div class="cart-item-name">' + item.name + '</div>' +
-        '<div class="cart-item-price">¥' + item.price + '</div>' +
-      '</div>' +
-      '<div class="cart-item-qty">' +
-        '<button class="cart-qty-btn" onclick="changeCartQty(' + item.goodsId + ',-1)">−</button>' +
-        '<span class="cart-qty-num">' + item.qty + '</span>' +
-        '<button class="cart-qty-btn" onclick="changeCartQty(' + item.goodsId + ',1)">+</button>' +
-      '</div>' +
-    '</div>';
+function openCart(){ renderCart(); document.getElementById('cartMask').classList.add('show'); }
+function closeCart(){ document.getElementById('cartMask').classList.remove('show'); }
+function renderCart(){
+  var db=getDb(); var body=document.getElementById('cartBody');
+  if(db.cart.length===0){ body.innerHTML='<div class="empty"><div class="empty-icon">🛒</div><div class="empty-text">清单为空，快去选择吧</div></div>'; document.getElementById('cartTotal').innerText='0'; document.getElementById('cartSubmit').disabled=true; return; }
+  var total=0; var html='';
+  db.cart.forEach(function(item){
+    var price=codeToNum(item.code); var sub=price*item.qty; total+=sub; var grad=getGrad(item.catId);
+    html+='<div class="cart-item"><div class="cart-img '+grad+'"><img src="'+item.img+'" alt="'+item.name+'" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'"><div class="fallback" style="display:none;">'+item.name+'</div></div><div class="cart-info"><div class="cart-name">'+item.name+'</div>'+(item.code?'<div class="cart-code">编号 '+item.code+'</div>':'')+'</div><div class="cart-qty"><button class="qty-btn" onclick="changeCartQty('+item.goodsId+',-1)">−</button><span class="qty-num">'+item.qty+'</span><button class="qty-btn" onclick="changeCartQty('+item.goodsId+',1)">+</button></div></div>';
   });
-  body.innerHTML = html;
-  document.getElementById('cartTotal').innerText = '¥' + total;
-  document.getElementById('cartSubmit').disabled = false;
+  body.innerHTML=html; document.getElementById('cartTotal').innerText=total; document.getElementById('cartSubmit').disabled=false;
 }
-
-// 提交订单
-function openOrderForm() {
-  var db = getDb();
-  if (db.cart.length === 0) {
-    showToast('清单为空');
-    return;
-  }
-  closeCart();
-  var total = 0;
-  db.cart.forEach(function(c){ total += c.price * c.qty; });
-  document.getElementById('formTotal').innerText = '¥' + total;
-  document.getElementById('orderFormModal').classList.add('show');
+function openOrderForm(){
+  var db=getDb(); if(db.cart.length===0){ showToast('清单为空'); return; } closeCart();
+  var total=0; db.cart.forEach(function(c){total+=codeToNum(c.code)*c.qty;});
+  document.getElementById('formTotal').innerText=total; document.getElementById('formMask').classList.add('show');
 }
-
-function closeOrderForm() {
-  document.getElementById('orderFormModal').classList.remove('show');
-}
-
-function submitOrder() {
-  var name = document.getElementById('formName').value.trim();
-  var phone = document.getElementById('formPhone').value.trim();
-  var addr = document.getElementById('formAddr').value.trim();
-  var note = document.getElementById('formNote').value.trim();
-  if (!name) { showToast('请输入姓名'); return; }
-  if (!phone) { showToast('请输入联系电话'); return; }
-  var db = getDb();
-  if (db.cart.length === 0) { showToast('清单为空'); return; }
-  var total = 0;
-  var items = [];
-  db.cart.forEach(function(c) {
-    var sub = c.price * c.qty;
-    total += sub;
-    items.push({goodsName: c.name, qty: c.qty, price: c.price, sub: sub, img: c.img});
-  });
-  var orderNo = 'ord_' + Date.now() + Math.floor(Math.random() * 1000);
-  var now = new Date();
-  var timeStr = now.getFullYear() + '/' + (now.getMonth()+1) + '/' + now.getDate() + ' ' + now.getHours() + ':' + (now.getMinutes()<10?'0':'') + now.getMinutes() + ':' + (now.getSeconds()<10?'0':'') + now.getSeconds();
-  var order = {
-    orderNo: orderNo,
-    deviceId: deviceId,
-    userName: name,
-    userPhone: phone,
-    userAddr: addr,
-    note: note,
-    items: items,
-    total: total,
-    createTime: timeStr,
-    status: 'pending'
-  };
-  db.orders.unshift(order);
-  db.cart = [];
-  saveDb(db);
-  refreshCartBadge();
-  closeOrderForm();
-  document.getElementById('formName').value = '';
-  document.getElementById('formPhone').value = '';
-  document.getElementById('formAddr').value = '';
-  document.getElementById('formNote').value = '';
+function closeOrderForm(){ document.getElementById('formMask').classList.remove('show'); }
+function submitOrder(){
+  var name=document.getElementById('fName').value.trim(); var phone=document.getElementById('fPhone').value.trim();
+  var addr=document.getElementById('fAddr').value.trim(); var note=document.getElementById('fNote').value.trim();
+  if(!name){ showToast('请输入姓名'); return; } if(!phone){ showToast('请输入联系电话'); return; }
+  var db=getDb(); if(db.cart.length===0){ showToast('清单为空'); return; }
+  var total=0; var items=[];
+  db.cart.forEach(function(c){ var price=codeToNum(c.code); var sub=price*c.qty; total+=sub; items.push({goodsName:c.name,qty:c.qty,code:c.code,price:price,sub:sub,img:c.img}); });
+  var orderNo='INT'+Date.now().toString(36).toUpperCase()+Math.random().toString(36).substr(2,4).toUpperCase();
+  var now=new Date(); var timeStr=now.getFullYear()+'/'+(now.getMonth()+1)+'/'+now.getDate()+' '+now.getHours()+':'+(now.getMinutes()<10?'0':'')+now.getMinutes()+':'+(now.getSeconds()<10?'0':'')+now.getSeconds();
+  var order={orderNo:orderNo,deviceId:deviceId,userName:name,userPhone:phone,userAddr:addr,note:note,items:items,total:total,createTime:timeStr,status:'pending'};
+  db.orders.unshift(order); db.cart=[]; saveDb(db); refreshBadge(); closeOrderForm();
+  document.getElementById('fName').value=''; document.getElementById('fPhone').value=''; document.getElementById('fAddr').value=''; document.getElementById('fNote').value='';
   showToast('提交成功');
 }
-
-// 我的记录
-function switchTab(tab) {
-  if (tab === 'home') {
-    document.querySelectorAll('.nav-item').forEach(function(n, i){ n.classList.toggle('active', i === 0); });
-    closeRecord();
-  } else if (tab === 'record') {
-    document.querySelectorAll('.nav-item').forEach(function(n, i){ n.classList.toggle('active', i === 1); });
-    openRecord();
-  } else if (tab === 'admin') {
-    window.location.href = 'admin.html';
-  }
+function switchTab(tab){
+  var items=document.querySelectorAll('.tab-item');
+  if(tab==='home'){ items.forEach(function(el,i){el.classList.toggle('active',i===0);}); closeRecord(); }
+  else if(tab==='record'){ items.forEach(function(el,i){el.classList.toggle('active',i===1);}); openRecord(); }
+  else if(tab==='admin'){ window.location.href='admin.html'; }
 }
-
-function openRecord() {
-  renderRecordList();
-  document.getElementById('recordPage').classList.add('show');
-}
-
-function closeRecord() {
-  document.getElementById('recordPage').classList.remove('show');
-  closeOrderDetail();
-}
-
-function renderRecordList() {
-  var db = getDb();
-  var myOrders = db.orders.filter(function(o){ return o.deviceId === deviceId; });
-  var body = document.getElementById('recordBody');
-  if (myOrders.length === 0) {
-    body.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">暂无登记记录</div></div>';
-    return;
-  }
-  var html = '';
-  myOrders.forEach(function(order) {
-    var statusText = order.status === 'done' ? '已处理' : '待处理';
-    var statusClass = order.status === 'done' ? 'done' : 'pending';
-    var count = 0;
-    order.items.forEach(function(it){ count += it.qty; });
-    var imgsHtml = '';
-    var showImgs = order.items.slice(0, 3);
-    showImgs.forEach(function(it) {
-      var catId = getCatIdByName(it.goodsName);
-      var gradClass = getGradClass(catId);
-      var img = it.img || getGoodsImgByName(it.goodsName);
-      imgsHtml += '<div class="order-img-wrap ' + gradClass + '">';
-      if (img) {
-        imgsHtml += '<img src="' + img + '" alt="" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">';
-      }
-      imgsHtml += '<div class="fallback" style="display:' + (img ? 'none' : 'flex') + ';">' + it.goodsName + '</div>';
-      imgsHtml += '</div>';
-    });
-    html += '<div class="order-card" onclick="openOrderDetail(\'' + order.orderNo + '\')">' +
-      '<div class="order-card-left">' +
-        '<div class="order-no">' + order.orderNo + '</div>' +
-        '<span class="order-status ' + statusClass + '">' + statusText + '</span>' +
-        '<div class="order-time">' + order.createTime + '</div>' +
-        '<div class="order-count">共' + count + '件</div>' +
-      '</div>' +
-      '<div class="order-card-right">' +
-        '<div class="order-imgs">' + imgsHtml + '</div>' +
-        '<div class="order-total">' + order.total + '</div>' +
-      '</div>' +
-    '</div>';
+function openRecord(){ renderRecordList(); document.getElementById('recordPage').classList.add('show'); }
+function closeRecord(){ document.getElementById('recordPage').classList.remove('show'); closeOd(); }
+function renderRecordList(){
+  var db=getDb(); var myOrders=db.orders.filter(function(o){return o.deviceId===deviceId;}); var body=document.getElementById('recordBody');
+  if(myOrders.length===0){ body.innerHTML='<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">暂无提交记录</div><div class="empty-link" onclick="switchTab(\'home\')">去首页逛逛</div></div>'; return; }
+  var html='';
+  myOrders.forEach(function(order){
+    var statusText=order.status==='done'?'已处理':'待处理'; var statusClass=order.status==='done'?'done':'pending'; var count=0;
+    order.items.forEach(function(it){count+=it.qty;}); var itemsHtml='';
+    order.items.forEach(function(it){ itemsHtml+='<div class="order-item-row"><span class="order-item-name">'+it.goodsName+' × '+it.qty+'</span><span class="order-item-code">'+(it.code||'')+'</span></div>'; });
+    html+='<div class="order-card" onclick="openOd(\''+order.orderNo+'\')"><div class="order-card-head"><span class="order-no">'+order.orderNo+'</span><span class="order-status '+statusClass+'">'+statusText+'</span></div><div class="order-items">'+itemsHtml+'</div><div class="order-total-row"><span class="order-total-label">合计</span><span class="order-total-val">'+order.total+'</span></div><div class="order-meta">'+order.createTime+' · 共'+count+'件</div></div>';
   });
-  body.innerHTML = html;
+  body.innerHTML=html;
 }
-
-// 订单详情
-function openOrderDetail(orderNo) {
-  var db = getDb();
-  var order = db.orders.find(function(o){ return o.orderNo === orderNo; });
-  if (!order) return;
-  document.getElementById('odSubtitle').innerText = order.orderNo + ' · ' + order.createTime;
-  var body = document.getElementById('odBody');
-  var itemsHtml = '<div class="od-section"><div class="od-section-title">物品明细</div>';
-  order.items.forEach(function(it) {
-    var catId = getCatIdByName(it.goodsName);
-    var gradClass = getGradClass(catId);
-    var img = it.img || getGoodsImgByName(it.goodsName);
-    itemsHtml += '<div class="od-item">' +
-      '<div class="od-item-img ' + gradClass + '">';
-    if (img) {
-      itemsHtml += '<img src="' + img + '" alt="" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">';
-    }
-    itemsHtml += '<div class="fallback" style="display:' + (img ? 'none' : 'flex') + ';">' + it.goodsName + '</div>';
-    itemsHtml += '</div>' +
-      '<div class="od-item-info">' +
-        '<div class="od-item-name">' + it.goodsName + '</div>' +
-        '<div class="od-item-qty">x' + it.qty + '</div>' +
-      '</div>' +
-      '<div class="od-item-price">' + it.sub + '</div>' +
-    '</div>';
+function openOd(orderNo){
+  var db=getDb(); var order=db.orders.find(function(o){return o.orderNo===orderNo;}); if(!order)return;
+  document.getElementById('odSub').innerText=order.orderNo+' · '+order.createTime; var body=document.getElementById('odBody');
+  var statusText=order.status==='done'?'已处理':'待处理'; var statusColor=order.status==='done'?'var(--success)':'var(--warning)';
+  var itemsHtml='<div class="od-section"><div class="od-section-title">物品明细</div>';
+  order.items.forEach(function(it){
+    var g=getGoodsByName(it.goodsName); var grad=g?getGrad(g.catId):'grad-0';
+    itemsHtml+='<div class="od-item"><div class="od-item-img '+grad+'">';
+    if(it.img){ itemsHtml+='<img src="'+it.img+'" alt="" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">'; }
+    itemsHtml+='<div class="fallback" style="display:'+(it.img?'none':'flex')+';">'+it.goodsName+'</div></div>';
+    itemsHtml+='<div class="od-item-info"><div class="od-item-name">'+it.goodsName+'</div><div class="od-item-code">×'+it.qty+(it.code?' · '+it.code:'')+'</div></div><div class="od-item-sub">'+it.sub+'</div></div>';
   });
-  itemsHtml += '<div class="od-total-row"><span>合计</span><span class="od-total-value">' + order.total + '</span></div>';
-  itemsHtml += '</div>';
-  var infoHtml = '<div class="od-section"><div class="od-section-title">联系信息</div>' +
-    '<div class="od-info-row"><span class="od-info-label">姓名</span><span class="od-info-value">' + (order.userName || '-') + '</span></div>' +
-    '<div class="od-info-row"><span class="od-info-label">电话</span><span class="od-info-value">' + (order.userPhone || '-') + '</span></div>' +
-    '<div class="od-info-row"><span class="od-info-label">地址</span><span class="od-info-value">' + (order.userAddr || '-') + '</span></div>' +
-    (order.note ? '<div class="od-info-row"><span class="od-info-label">备注</span><span class="od-info-value">' + order.note + '</span></div>' : '') +
-    '</div>';
-  var statusText = order.status === 'done' ? '已处理' : '待处理';
-  var statusHtml = '<div class="od-section"><div class="od-section-title">订单状态</div>' +
-    '<div class="od-info-row"><span class="od-info-label">当前状态</span><span class="od-info-value" style="color:' + (order.status === 'done' ? 'var(--success)' : 'var(--warning)') + ';font-weight:600;">' + statusText + '</span></div>' +
-    '</div>';
-  body.innerHTML = itemsHtml + infoHtml + statusHtml;
-  document.getElementById('orderDetailPage').classList.add('show');
+  itemsHtml+='<div class="od-total-row"><span>合计</span><span class="od-total-val">'+order.total+'</span></div></div>';
+  var infoHtml='<div class="od-section"><div class="od-section-title">联系信息</div><div class="od-info-row"><span class="od-info-label">👤 姓名</span><span class="od-info-value">'+(order.userName||'-')+'</span></div><div class="od-info-row"><span class="od-info-label">📞 电话</span><span class="od-info-value">'+(order.userPhone||'-')+'</span></div><div class="od-info-row"><span class="od-info-label">📍 地址</span><span class="od-info-value">'+(order.userAddr||'-')+'</span></div>'+(order.note?'<div class="od-info-row"><span class="od-info-label">📝 备注</span><span class="od-info-value">'+order.note+'</span></div>':'')+'<div class="od-info-row"><span class="od-info-label">🕐 时间</span><span class="od-info-value">'+order.createTime+'</span></div></div>';
+  var statusHtml='<div class="od-section"><div class="od-section-title">订单状态</div><div class="od-info-row"><span class="od-info-label">当前状态</span><span class="od-info-value" style="color:'+statusColor+';font-weight:600;">'+statusText+'</span></div></div>';
+  body.innerHTML=itemsHtml+infoHtml+statusHtml; document.getElementById('odPage').classList.add('show');
 }
-
-function closeOrderDetail() {
-  document.getElementById('orderDetailPage').classList.remove('show');
+function closeOd(){ document.getElementById('odPage').classList.remove('show'); }
+function initFabDrag(){
+  var btn=document.getElementById('fab'); if(!btn)return; var dragging=false,moved=false,sx,sy,sl,st;
+  function start(e){ var t=e.touches?e.touches[0]:e; sx=t.clientX; sy=t.clientY; var r=btn.getBoundingClientRect(); sl=r.left; st=r.top; dragging=true; moved=false; }
+  function move(e){
+    if(!dragging)return; var t=e.touches?e.touches[0]:e; var dx=t.clientX-sx,dy=t.clientY-sy;
+    if(Math.abs(dx)>5||Math.abs(dy)>5){ moved=true; if(e.cancelable)e.preventDefault(); }
+    var app=document.getElementById('app'); var ar=app.getBoundingClientRect(); var nl=sl+dx,nt=st+dy;
+    var maxL=ar.right-btn.offsetWidth-8; var maxT=window.innerHeight-btn.offsetHeight-8;
+    nl=Math.max(ar.left+8,Math.min(nl,maxL)); nt=Math.max(8,Math.min(nt,maxT));
+    btn.style.left=nl+'px'; btn.style.top=nt+'px'; btn.style.right='auto'; btn.style.bottom='auto';
+  }
+  function end(){ if(!dragging)return; dragging=false; if(moved){ var r=btn.getBoundingClientRect(); localStorage.setItem('fab_pos',JSON.stringify({left:r.left,top:r.top})); setTimeout(function(){moved=false;},100); } }
+  btn.addEventListener('mousedown',start); document.addEventListener('mousemove',move); document.addEventListener('mouseup',end);
+  btn.addEventListener('touchstart',start,{passive:false}); document.addEventListener('touchmove',move,{passive:false}); document.addEventListener('touchend',end);
+  var saved=localStorage.getItem('fab_pos');
+  if(saved){ try{ var p=JSON.parse(saved); btn.style.left=p.left+'px'; btn.style.top=p.top+'px'; btn.style.right='auto'; btn.style.bottom='auto'; }catch(e){} }
+  btn.addEventListener('click',function(e){ if(moved){ e.stopPropagation(); e.preventDefault(); } },true);
 }
-
-// 浮动按钮拖拽
-function initFabDrag() {
-  var btn = document.getElementById('fabCart');
-  if (!btn) return;
-  var isDragging = false;
-  var startX, startY, startLeft, startTop;
-  var hasMoved = false;
-  function onStart(e) {
-    var touch = e.touches ? e.touches[0] : e;
-    startX = touch.clientX;
-    startY = touch.clientY;
-    var rect = btn.getBoundingClientRect();
-    startLeft = rect.left;
-    startTop = rect.top;
-    isDragging = true;
-    hasMoved = false;
-  }
-  function onMove(e) {
-    if (!isDragging) return;
-    var touch = e.touches ? e.touches[0] : e;
-    var dx = touch.clientX - startX;
-    var dy = touch.clientY - startY;
-    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
-      hasMoved = true;
-      e.preventDefault();
-    }
-    var newLeft = startLeft + dx;
-    var newTop = startTop + dy;
-    var maxLeft = window.innerWidth - btn.offsetWidth - 8;
-    var maxTop = window.innerHeight - btn.offsetHeight - 8;
-    newLeft = Math.max(8, Math.min(newLeft, maxLeft));
-    newTop = Math.max(8, Math.min(newTop, maxTop));
-    btn.style.left = newLeft + 'px';
-    btn.style.top = newTop + 'px';
-    btn.style.right = 'auto';
-    btn.style.bottom = 'auto';
-  }
-  function onEnd(e) {
-    if (!isDragging) return;
-    isDragging = false;
-    if (hasMoved) {
-      var rect = btn.getBoundingClientRect();
-      localStorage.setItem('fab_pos', JSON.stringify({left: rect.left, top: rect.top}));
-      setTimeout(function(){ hasMoved = false; }, 100);
-    }
-  }
-  btn.addEventListener('mousedown', onStart);
-  document.addEventListener('mousemove', onMove);
-  document.addEventListener('mouseup', onEnd);
-  btn.addEventListener('touchstart', onStart, {passive: false});
-  document.addEventListener('touchmove', onMove, {passive: false});
-  document.addEventListener('touchend', onEnd);
-  var savedPos = localStorage.getItem('fab_pos');
-  if (savedPos) {
-    try {
-      var pos = JSON.parse(savedPos);
-      btn.style.left = pos.left + 'px';
-      btn.style.top = pos.top + 'px';
-      btn.style.right = 'auto';
-      btn.style.bottom = 'auto';
-    } catch(e) {}
-  }
-  btn.addEventListener('click', function(e) {
-    if (hasMoved) {
-      e.stopPropagation();
-      e.preventDefault();
-    }
-  }, true);
-}
-
-// 启动
 init();
 </script>
 </body>
