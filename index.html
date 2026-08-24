@@ -323,12 +323,12 @@ if (!deviceId) {
 
 var DEFAULT_DATA = {
   goods: [
-    {id:1, catId:'aixi', name:'酸奶', code:'No.23', price:18, desc:'经典酸奶口味，清爽顺滑，爱喜系列经典款', img:'https://images.unsplash.com/photo-1488477181946-6428a0291777?w=400', sellout:false},
-    {id:2, catId:'aixi', name:'香芋', code:'No.23', price:18, desc:'浓郁香芋风味，绵密细腻，爱喜系列人气款', img:'https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=400', sellout:false},
-    {id:3, catId:'aixi', name:'茉莉', code:'No.23', price:20, desc:'清新茉莉花香，回味悠长，爱喜系列高端款', img:'https://images.unsplash.com/photo-1564890369478-c89ca6d9cde9?w=400', sellout:false},
-    {id:4, catId:'alishan', name:'天韵', code:'No.38', price:25, desc:'阿里山经典系列，口感醇厚，阿里山招牌款', img:'https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=400', sellout:false},
-    {id:5, catId:'alishan', name:'芒果', code:'No.38', price:22, desc:'热带芒果风味，果香四溢，阿里山果味系列', img:'https://images.unsplash.com/photo-1553279768-86542fa0078?w=400', sellout:false},
-    {id:6, catId:'baile', name:'原味', code:'No.15', price:15, desc:'百乐经典原味，简约之选，百乐入门款', img:'https://images.unsplash.com/photo-1578913130218-2f66c2b3a1a0?w=400', sellout:false}
+    {id:1, catId:'aixi', name:'酸奶', code:'No.23', price:18, desc:'经典酸奶口味，清爽顺滑，爱喜系列经典款', img:'https://picsum.photos/seed/yogurt1/400/300', sellout:false},
+    {id:2, catId:'aixi', name:'香芋', code:'No.23', price:18, desc:'浓郁香芋风味，绵密细腻，爱喜系列人气款', img:'https://picsum.photos/seed/taro2/400/300', sellout:false},
+    {id:3, catId:'aixi', name:'茉莉', code:'No.23', price:20, desc:'清新茉莉花香，回味悠长，爱喜系列高端款', img:'https://picsum.photos/seed/jasmine3/400/300', sellout:false},
+    {id:4, catId:'alishan', name:'天韵', code:'No.38', price:25, desc:'阿里山经典系列，口感醇厚，阿里山招牌款', img:'https://picsum.photos/seed/tianyun4/400/300', sellout:false},
+    {id:5, catId:'alishan', name:'芒果', code:'No.38', price:22, desc:'热带芒果风味，果香四溢，阿里山果味系列', img:'https://picsum.photos/seed/mango5/400/300', sellout:false},
+    {id:6, catId:'baile', name:'原味', code:'No.15', price:15, desc:'百乐经典原味，简约之选，百乐入门款', img:'https://picsum.photos/seed/original6/400/300', sellout:false}
   ],
   orders: [],
   categories: [
@@ -455,10 +455,10 @@ function renderGoods() {
     };
     var imgHtml = isSellout ? '<div class="sellout-tag">已售罄</div>' : '';
     var gradClass = getGradClass(item.catId);
-    var initial = item.name.charAt(0);
     card.innerHTML = imgHtml +
       '<div class="goods-img-wrap ' + gradClass + '">' +
-        '<div class="goods-img-placeholder">' + initial + '</div>' +
+        '<img class="goods-img" src="' + item.img + '" alt="' + item.name + '" onerror="this.style.display=\'none\';this.parentNode.querySelector(\'.goods-img-fallback\').style.display=\'flex\'">' +
+        '<div class="goods-img-fallback" style="display:none;width:100%;height:100%;align-items:center;justify-content:center;color:#fff;font-size:24px;font-weight:700;text-shadow:0 2px 8px rgba(0,0,0,0.3);">' + item.name + '</div>' +
       '</div>' +
       '<div class="goods-info">' +
         '<div class="goods-name">' + item.name + '</div>' +
@@ -483,13 +483,13 @@ function openDetail(goodsId) {
   currentDetailId = goodsId;
   detailQty = 1;
   var gradClass = getGradClass(item.catId);
-  var initial = item.name.charAt(0);
   var heroEl = document.querySelector('.detail-hero');
   heroEl.className = 'detail-hero ' + gradClass;
   heroEl.innerHTML = '<button class="detail-back" onclick="closeDetail()">' +
     '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>' +
     '</button>' +
-    '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:96px;font-weight:700;text-shadow:0 4px 16px rgba(0,0,0,0.3);">' + initial + '</div>';
+    '<img src="' + item.img + '" alt="' + item.name + '" style="width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;" onerror="this.style.display=\'none\';this.parentNode.querySelector(\'.detail-fallback\').style.display=\'flex\'">' +
+    '<div class="detail-fallback" style="display:none;width:100%;height:100%;align-items:center;justify-content:center;color:#fff;font-size:48px;font-weight:700;text-shadow:0 4px 16px rgba(0,0,0,0.3);">' + item.name + '</div>';
   document.getElementById('detailCode').innerText = item.code ? item.code : '';
   document.getElementById('detailName').innerText = item.name;
   var cat = db.categories.find(function(c){ return c.id === item.catId; });
@@ -585,9 +585,13 @@ function renderCartModal() {
     var sub = item.price * item.qty;
     total += sub;
     var gradClass = getGradClass(item.catId || getCatIdByName(item.name));
-    var initial = item.name.charAt(0);
+    var imgContent = '';
+    if (item.img) {
+      imgContent = '<img src="' + item.img + '" alt="' + item.name + '" style="width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;" onerror="this.style.display=\'none\';this.parentNode.querySelector(\'.cart-fallback\').style.display=\'flex\'">';
+    }
+    imgContent += '<div class="cart-fallback" style="display:none;width:100%;height:100%;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:700;text-align:center;padding:4px;">' + item.name + '</div>';
     html += '<div class="cart-item">' +
-      '<div class="cart-item-img ' + gradClass + '"><div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;font-weight:700;">' + initial + '</div></div>' +
+      '<div class="cart-item-img ' + gradClass + '">' + imgContent + '</div>' +
       '<div class="cart-item-info">' +
         '<div class="cart-item-name">' + item.name + '</div>' +
         '<div class="cart-item-price">' + item.price + '</div>' +
@@ -703,8 +707,11 @@ function renderMyRecordList() {
     showImgs.forEach(function(it) {
       var catId = getCatIdByName(it.goodsName);
       var gradClass = getGradClass(catId);
-      var initial = (it.goodsName || '?').charAt(0);
-      imgsHtml += '<div class="order-img-wrap ' + gradClass + '"><div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;font-weight:700;">' + initial + '</div></div>';
+      var img = it.img || getGoodsImgByName(it.goodsName);
+      imgsHtml += '<div class="order-img-wrap ' + gradClass + '">' +
+        (img ? '<img src="' + img + '" alt="" style="width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;" onerror="this.style.display=\'none\';this.parentNode.querySelector(\'.order-fallback\').style.display=\'flex\'">' : '') +
+        '<div class="order-fallback" style="display:none;width:100%;height:100%;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700;text-align:center;padding:2px;">' + it.goodsName + '</div>' +
+      '</div>';
     });
     html += '<div class="order-card" onclick="showMrDetail(\'' + order.orderNo + '\')">' +
       '<div class="order-card-left">' +
@@ -738,10 +745,14 @@ function showMrDetail(orderNo) {
   order.items.forEach(function(it) {
     var catId = getCatIdByName(it.goodsName);
     var gradClass = getGradClass(catId);
-    var initial = (it.goodsName || '?').charAt(0);
-    var imgHtml = '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px;font-weight:700;">' + initial + '</div>';
+    var img = it.img || getGoodsImgByName(it.goodsName);
+    var imgContent = '';
+    if (img) {
+      imgContent = '<img src="' + img + '" alt="" style="width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;" onerror="this.style.display=\'none\';this.parentNode.querySelector(\'.mr-fallback\').style.display=\'flex\'">';
+    }
+    imgContent += '<div class="mr-fallback" style="display:none;width:100%;height:100%;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:700;text-align:center;padding:4px;">' + it.goodsName + '</div>';
     itemsHtml += '<div class="mr-detail-item">' +
-      '<div class="mr-detail-item-img ' + gradClass + '">' + imgHtml + '</div>' +
+      '<div class="mr-detail-item-img ' + gradClass + '">' + imgContent + '</div>' +
       '<div class="mr-detail-item-info">' +
         '<div class="mr-detail-item-name">' + it.goodsName + '</div>' +
         '<div class="mr-detail-item-qty">x' + it.qty + '</div>' +
