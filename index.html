@@ -716,11 +716,25 @@ function openMyOrder(){
     }
     let msg="我的提交记录：\n\n";
     myOrders.forEach((o,i)=>{
-        msg+=`【${i+1}】${o.createdAt}\n`;
-        msg+=`姓名：${o.name} | 电话：${o.phone}\n`;
-        msg+=`地址：${o.addr}\n`;
-        o.items.forEach(it=>{msg+=`  ${it.name} ×${it.qty} = ¥${it.subtotal.toFixed(2)}\n`;});
-        msg+=`合计：¥${o.total.toFixed(2)} | 状态：${o.status}\n`;
+        const createTime=o.createTime||o.createdAt||"未知时间";
+        const userName=o.userName||o.name||"未填写";
+        const userPhone=o.userPhone||o.phone||"未填写";
+        const userAddr=o.userAddr||o.addr||"未填写";
+        const status=o.status==="pending"?"待处理":(o.status==="done"?"已处理":(o.status||"未知"));
+        const total=typeof o.total==="number"?o.total.toFixed(2):(o.total||"0");
+        msg+=`【${i+1}】${createTime}\n`;
+        msg+=`姓名：${userName} | 电话：${userPhone}\n`;
+        msg+=`地址：${userAddr}\n`;
+        if(o.items&&o.items.length>0){
+            o.items.forEach(it=>{
+                const goodsName=it.goodsName||it.name||"未知商品";
+                const qty=it.qty||1;
+                const sub=it.sub!==undefined?it.sub:(it.subtotal!==undefined?it.subtotal:"0");
+                const subStr=typeof sub==="number"?sub.toFixed(2):sub;
+                msg+=`  ${goodsName} ×${qty} = ¥${subStr}\n`;
+            });
+        }
+        msg+=`合计：¥${total} | 状态：${status}\n`;
         if(o.note) msg+=`备注：${o.note}\n`;
         msg+="\n";
     });
