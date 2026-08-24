@@ -307,7 +307,7 @@ function renderGoods(){
     var card=document.createElement('div'); card.className='goods-card';
     var grad=getGrad(item.catId); var imgHtml='<div class="goods-img '+grad+'">';
     if(item.sellout){ imgHtml+='<div class="sellout-tag">无库存</div>'; }
-    imgHtml+='<img src="'+item.img+'" alt="'+item.name+'" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">';
+    imgHtml+='<img src="'+item.img+'" alt="'+item.name+'" decoding="async" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">';
     imgHtml+='<div class="fallback" style="display:none;">'+item.name+'</div></div>';
     var btnHtml=item.sellout?'<div class="goods-btn disabled">暂无库存</div>':'<div class="goods-btn active" onclick="event.stopPropagation();addToCart('+item.id+')">加入清单</div>';
     card.innerHTML=imgHtml+'<div class="goods-info"><div class="goods-name">'+item.name+'</div>'+(item.code?'<div class="goods-code">编号 '+item.code+'</div>':'')+btnHtml+'</div>';
@@ -319,7 +319,7 @@ function openDetail(id){
   var g=getGoodsById(id); if(!g)return; curDetailId=id; detailQty=1;
   var hero=document.getElementById('detailHero'); var grad=getGrad(g.catId); hero.className='detail-hero '+grad;
   var back=hero.querySelector('.detail-back'); hero.innerHTML=''; hero.appendChild(back);
-  var img=document.createElement('img'); img.src=g.img; img.alt=g.name; img.onerror=function(){this.style.display='none';this.nextElementSibling.style.display='flex';}; hero.appendChild(img);
+  var img=document.createElement('img'); img.src=g.img; img.alt=g.name; img.decoding='async'; img.onerror=function(){this.style.display='none';this.nextElementSibling.style.display='flex';}; hero.appendChild(img);
   var fb=document.createElement('div'); fb.className='fallback'; fb.style.display='none'; fb.innerText=g.name; hero.appendChild(fb);
   document.getElementById('detailCode').innerText=g.code?'编号 '+g.code:'';
   document.getElementById('detailName').innerText=g.name;
@@ -356,7 +356,7 @@ function renderCart(){
   var total=0; var html='';
   db.cart.forEach(function(item){
     var price=codeToNum(item.code); var sub=price*item.qty; total+=sub; var grad=getGrad(item.catId);
-    html+='<div class="cart-item"><div class="cart-img '+grad+'"><img src="'+item.img+'" alt="'+item.name+'" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'"><div class="fallback" style="display:none;">'+item.name+'</div></div><div class="cart-info"><div class="cart-name">'+item.name+'</div>'+(item.code?'<div class="cart-code">编号 '+item.code+'</div>':'')+'</div><div class="cart-qty"><button class="qty-btn" onclick="changeCartQty('+item.goodsId+',-1)">−</button><span class="qty-num">'+item.qty+'</span><button class="qty-btn" onclick="changeCartQty('+item.goodsId+',1)">+</button></div></div>';
+    html+='<div class="cart-item"><div class="cart-img '+grad+'"><img src="'+item.img+'" alt="'+item.name+'" decoding="async" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'"><div class="fallback" style="display:none;">'+item.name+'</div></div><div class="cart-info"><div class="cart-name">'+item.name+'</div>'+(item.code?'<div class="cart-code">编号 '+item.code+'</div>':'')+'</div><div class="cart-qty"><button class="qty-btn" onclick="changeCartQty('+item.goodsId+',-1)">−</button><span class="qty-num">'+item.qty+'</span><button class="qty-btn" onclick="changeCartQty('+item.goodsId+',1)">+</button></div></div>';
   });
   body.innerHTML=html; document.getElementById('cartTotal').innerText=total; document.getElementById('cartSubmit').disabled=false;
 }
@@ -408,7 +408,7 @@ function openOd(orderNo){
   order.items.forEach(function(it){
     var g=getGoodsByName(it.goodsName); var grad=g?getGrad(g.catId):'grad-0';
     itemsHtml+='<div class="od-item"><div class="od-item-img '+grad+'">';
-    if(it.img){ itemsHtml+='<img src="'+it.img+'" alt="" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">'; }
+    if(it.img){ itemsHtml+='<img src="'+it.img+'" alt="" decoding="async" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">'; }
     itemsHtml+='<div class="fallback" style="display:'+(it.img?'none':'flex')+';">'+it.goodsName+'</div></div>';
     itemsHtml+='<div class="od-item-info"><div class="od-item-name">'+it.goodsName+'</div><div class="od-item-code">×'+it.qty+(it.code?' · '+it.code:'')+'</div></div><div class="od-item-sub">'+it.sub+'</div></div>';
   });
