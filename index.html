@@ -15,7 +15,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans G
 .barrage{background:var(--primary-light);padding:10px 16px;display:flex;align-items:center;gap:8px;position:relative;overflow:hidden;}
 .barrage-icon{color:var(--primary);flex-shrink:0;font-size:14px;}
 .barrage-text{flex:1;overflow:hidden;white-space:nowrap;position:relative;font-size:13px;color:var(--primary-dark);}
-.barrage-scroll{display:inline-block;white-space:nowrap;animation:barrage 18s linear infinite;padding-left:100%;}
+.barrage-scroll{display:inline-block;white-space:nowrap;animation:barrage 12s linear infinite;padding-left:100%;}
 @keyframes barrage{0%{transform:translateX(0);}100%{transform:translateX(-100%);}}
 .barrage-close{cursor:pointer;color:var(--text2);font-size:18px;line-height:1;padding:0 4px;flex-shrink:0;}
 .header{padding:20px 16px 12px;}
@@ -282,7 +282,7 @@ function renderBarrage(){
   var closed=sessionStorage.getItem('barrage_closed'); var list=db.bulletins.filter(function(b){return b.enable===true;});
   if(list.length===0 || closed==='1'){ wrap.style.display='none'; return; }
   wrap.style.display='flex'; var text=list.map(function(b){return b.content;}).join('   |   ');
-  scroll.innerText=text+'        '+text;
+  scroll.innerText=text+'            '+text;
 }
 function closeBarrage(){ sessionStorage.setItem('barrage_closed','1'); document.getElementById('barrage').style.display='none'; }
 function renderCats(){
