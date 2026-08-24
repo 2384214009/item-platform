@@ -233,6 +233,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans G
 window.onerror = function(msg, url, line, col, err){ var bar = document.getElementById('errBar'); if(bar){ bar.innerText = '错误：' + msg + ' (行' + line + ')'; bar.className = 'err-bar show'; } return false; };
 var deviceId = localStorage.getItem('device_id');
 if(!deviceId){ deviceId = 'dev_' + Date.now() + '_' + Math.random().toString(36).substr(2,6); localStorage.setItem('device_id', deviceId); }
+var imageCache={},idbLoaded=false,idbDb=null;
+function initIDB(callback){try{var req=indexedDB.open('shop_images',1);req.onupgradeneeded=function(e){idbDb=e.target.result;if(!idbDb.objectStoreNames.contains('images')){idbDb.createObjectStore('images');}};req.onsuccess=function(e){idbDb=e.target.result;try{var tx=idbDb.transaction('images','readonly');var store=tx.objectStore('images');var keysReq=store.getAllKeys();keysReq.onsuccess=function(){var keys=keysReq.result;var loaded=0;if(keys.length===0){idbLoaded=true;if(callback)callback();return;}keys.forEach(function(key){var getReq=store.get(key);getReq.onsuccess=function(){imageCache[key]=getReq.result;loaded++;if(loaded>=keys.length){idbLoaded=true;if(callback)callback();}};});};}catch(e){idbLoaded=true;if(callback)callback();}};req.onerror=function(){idbLoaded=true;if(callback)callback();};}catch(e){idbLoaded=true;if(callback)callback();}}
+function idbSave(key,val){imageCache[key]=val;if(idbDb){try{var tx=idbDb.transaction('images','readwrite');tx.objectStore('images').put(val,key);}catch(e){}}}
+function idbDelete(key){delete imageCache[key];if(idbDb){try{var tx=idbDb.transaction('images','readwrite');tx.objectStore('images').delete(key);}catch(e){}}}
+initIDB();
 var DEFAULT = {
   goods: [
     {id:1, catId:'aixi', name:'爱喜酸奶', code:'No.23', desc:'经典酸奶口味，清爽顺滑', img:'https://picsum.photos/seed/aixi-yogurt/400/400', sellout:true},
@@ -259,10 +264,11 @@ function getDb(){
     if(!Array.isArray(db.orders)){ db.orders = []; changed = true; }
     if(!Array.isArray(db.adminAccounts) || db.adminAccounts.length === 0){ db.adminAccounts = JSON.parse(JSON.stringify(DEFAULT.adminAccounts)); changed = true; }
     if(changed) localStorage.setItem('shop_db', JSON.stringify(db));
+    db.goods.forEach(function(g){if(g.img&&g.img.indexOf('idb://')===0){var key=g.img.substring(6);g.img=imageCache[key]||'';}});
     return db;
   }catch(e){ localStorage.setItem('shop_db', JSON.stringify(DEFAULT)); return JSON.parse(JSON.stringify(DEFAULT)); }
 }
-function saveDb(db){ try{ localStorage.setItem('shop_db', JSON.stringify(db)); }catch(e){ if(e.name==='QuotaExceededError'||e.code===22){ showToast('存储空间不足，请在管理后台删除部分旧物品或订单后重试'); }else{ showToast('保存失败'); } throw e; } }
+function saveDb(db){ try{ var dbCopy=JSON.parse(JSON.stringify(db)); dbCopy.goods.forEach(function(g){if(g.img&&g.img.indexOf('data:image')===0){var key='img_'+g.id;idbSave(key,g.img);g.img='idb://'+key;}}); localStorage.setItem('shop_db', JSON.stringify(dbCopy)); }catch(e){ if(e.name==='QuotaExceededError'||e.code===22){ showToast('存储空间不足，请在管理后台删除部分旧物品或订单后重试'); }else{ showToast('保存失败'); } throw e; } }
 function getGrad(catId){ if(catId==='aixi')return'grad-1'; if(catId==='alishan')return'grad-2'; if(catId==='baile')return'grad-3'; return'grad-0'; }
 function getCatName(catId){ var db=getDb(); var c=db.categories.find(function(x){return x.id===catId;}); return c?c.name:''; }
 function getGoodsById(id){ var db=getDb(); return db.goods.find(function(g){return g.id===id;}); }
