@@ -294,7 +294,7 @@ function renderGoods(){
   list.forEach(function(item){
     var card=document.createElement('div'); card.className='goods-card';
     var grad=getGrad(item.catId); var imgHtml='<div class="goods-img '+grad+'">';
-    if(item.sellout){ imgHtml+='<div class="sellout-tag" style="position:absolute;top:8px;right:8px;z-index:10;">测试标签</div>'; }
+    if(item.sellout){ imgHtml+='<div class="sellout-tag">无库存</div>'; }
     imgHtml+='<img src="'+item.img+'" alt="'+item.name+'" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">';
     imgHtml+='<div class="fallback" style="display:none;">'+item.name+'</div></div>';
     var btnHtml=item.sellout?'<div class="goods-btn disabled">暂无库存</div>':'<div class="goods-btn active" onclick="event.stopPropagation();addToCart('+item.id+')">加入清单</div>';
