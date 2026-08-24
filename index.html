@@ -52,9 +52,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hira
 .nav-item{display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;color:var(--text-secondary);font-size:12px;transition:color 0.2s;padding:4px 16px;}
 .nav-item.active{color:var(--primary);}
 .nav-item svg{width:24px;height:24px;}
-.barrage-wrap{background:var(--primary-light);padding:8px 16px;display:flex;align-items:center;gap:8px;border-radius:8px;margin-bottom:12px;position:relative;}
-.barrage-text{font-size:13px;color:var(--primary-dark);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.barrage-close{cursor:pointer;color:var(--text-secondary);font-size:16px;line-height:1;padding:0 4px;}
+.barrage-wrap{background:var(--primary-light);padding:8px 16px;display:flex;align-items:center;gap:8px;border-radius:8px;margin-bottom:12px;position:relative;overflow:hidden;}
+.barrage-text{font-size:13px;color:var(--primary-dark);flex:1;overflow:hidden;white-space:nowrap;position:relative;}
+.barrage-scroll{display:inline-block;white-space:nowrap;animation:barrageScroll 15s linear infinite;padding-left:100%;}
+@keyframes barrageScroll{0%{transform:translateX(0);}100%{transform:translateX(-100%);}}
+.barrage-close{cursor:pointer;color:var(--text-secondary);font-size:16px;line-height:1;padding:0 4px;flex-shrink:0;}
 .modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;}
 .modal-box{background:var(--card);border-radius:var(--radius-lg);width:100%;max-width:400px;max-height:80vh;overflow-y:auto;}
 .modal-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
@@ -389,7 +391,8 @@ function renderBulletin() {
     return;
   }
   wrap.style.display = 'flex';
-  txtDom.innerText = activeList.map(function(i){ return i.content; }).join('  |  ');
+  var text = activeList.map(function(i){ return i.content; }).join('  |  ');
+  txtDom.innerHTML = '<span class="barrage-scroll">' + text + '　　　　　' + text + '</span>';
 }
 
 function closeBarrage() {
@@ -646,6 +649,11 @@ function closeMyRecord() {
   document.getElementById('myrecordPage').classList.remove('show');
 }
 
+function getGoodsImgByName(name) {
+  var item = DEFAULT_DATA.goods.find(function(g){ return g.name === name; });
+  return item ? item.img : '';
+}
+
 function renderMyRecordList() {
   var db = getDb();
   var myOrders = db.orders.filter(function(o){ return o.deviceId === deviceId; });
@@ -663,7 +671,14 @@ function renderMyRecordList() {
     var imgsHtml = '';
     var showImgs = order.items.slice(0, 3);
     showImgs.forEach(function(it) {
-      imgsHtml += '<div class="order-img-wrap"><img src="' + it.img + '" alt="" onerror="this.style.display=\'none\'"></div>';
+      var img = it.img || getGoodsImgByName(it.goodsName);
+      var bgColor = '#e0e0e0';
+      var initial = (it.goodsName || '?').charAt(0);
+      if (img) {
+        imgsHtml += '<div class="order-img-wrap"><img src="' + img + '" alt="" onerror="this.style.display=\'none\';this.parentNode.innerHTML=\'<div style=\\\'width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#e0e0e0;color:#999;font-size:14px;font-weight:600;\\\'>' + initial + '</div>\'"></div>';
+      } else {
+        imgsHtml += '<div class="order-img-wrap"><div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#e0e0e0;color:#999;font-size:14px;font-weight:600;">' + initial + '</div></div>';
+      }
     });
     html += '<div class="order-card" onclick="showMrDetail(\'' + order.orderNo + '\')">' +
       '<div class="order-card-left">' +
@@ -695,8 +710,16 @@ function showMrDetail(orderNo) {
   var body = document.getElementById('mrDetailBody');
   var itemsHtml = '';
   order.items.forEach(function(it) {
+    var img = it.img || getGoodsImgByName(it.goodsName);
+    var initial = (it.goodsName || '?').charAt(0);
+    var imgHtml = '';
+    if (img) {
+      imgHtml = '<img src="' + img + '" alt="" onerror="this.style.display=\'none\';this.parentNode.innerHTML=\'<div style=\\\'width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#e0e0e0;color:#999;font-size:18px;font-weight:600;\\\'>' + initial + '</div>\'">';
+    } else {
+      imgHtml = '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#e0e0e0;color:#999;font-size:18px;font-weight:600;">' + initial + '</div>';
+    }
     itemsHtml += '<div class="mr-detail-item">' +
-      '<div class="mr-detail-item-img"><img src="' + it.img + '" alt="" onerror="this.style.display=\'none\'"></div>' +
+      '<div class="mr-detail-item-img">' + imgHtml + '</div>' +
       '<div class="mr-detail-item-info">' +
         '<div class="mr-detail-item-name">' + it.goodsName + '</div>' +
         '<div class="mr-detail-item-qty">x' + it.qty + '</div>' +
