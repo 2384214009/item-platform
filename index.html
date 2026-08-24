@@ -336,6 +336,88 @@
         .nav-bottom button .nav-icon{font-size:22px;line-height:1;}
         .nav-bottom button:hover{color:var(--primary);}
         .nav-bottom button.active{color:var(--primary);font-weight:600;}
+        /* 我的记录页面 - 飞书版风格 */
+        .myrecord-modal{
+            position:fixed;inset:0;background:var(--bg);z-index:150;
+            display:none;overflow-y:auto;
+        }
+        .myrecord-modal.show{display:block;animation:slideInRight 0.3s ease;}
+        .myrecord-header{
+            padding:20px 16px 16px;max-width:560px;margin:0 auto;
+        }
+        .myrecord-title{
+            font-size:28px;font-weight:800;color:var(--primary);
+            margin-bottom:4px;
+        }
+        .myrecord-subtitle{
+            font-size:14px;color:var(--text-muted);
+        }
+        .myrecord-list{
+            max-width:560px;margin:0 auto;padding:0 16px 100px;
+        }
+        .myrecord-card{
+            background:var(--card);border-radius:20px;padding:16px;
+            margin-bottom:14px;box-shadow:var(--shadow-sm);
+            display:flex;align-items:center;gap:12px;cursor:pointer;
+            transition:all 0.15s;border:1px solid var(--border);
+        }
+        .myrecord-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-md);}
+        .myrecord-card:active{transform:scale(0.98);}
+        .myrecord-card-left{flex:1;min-width:0;}
+        .myrecord-card-no{
+            font-size:16px;font-weight:700;color:var(--text);
+            margin-bottom:6px;display:flex;align-items:center;gap:8px;
+        }
+        .myrecord-status{
+            padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;
+            flex-shrink:0;
+        }
+        .myrecord-status.pending{background:#fff3e0;color:#e65100;}
+        .myrecord-status.done{background:#e8f5e9;color:#2e7d32;}
+        .myrecord-card-time{
+            font-size:13px;color:var(--text-muted);margin-bottom:4px;
+        }
+        .myrecord-card-count{
+            font-size:13px;color:var(--text-secondary);
+        }
+        .myrecord-card-right{
+            display:flex;flex-direction:column;align-items:flex-end;gap:6px;
+            flex-shrink:0;
+        }
+        .myrecord-card-imgs{
+            position:relative;width:60px;height:60px;
+        }
+        .myrecord-card-img{
+            width:60px;height:60px;border-radius:14px;object-fit:cover;
+            position:absolute;top:0;right:0;border:2px solid var(--card);
+        }
+        .myrecord-card-img:nth-child(2){right:12px;top:4px;z-index:-1;opacity:0.8;}
+        .myrecord-card-img:nth-child(3){right:24px;top:8px;z-index:-2;opacity:0.6;}
+        .myrecord-card-img-badge{
+            position:absolute;bottom:-4px;right:-4px;
+            background:var(--primary);color:#fff;font-size:11px;font-weight:700;
+            width:22px;height:22px;border-radius:50%;
+            display:flex;align-items:center;justify-content:center;
+            border:2px solid var(--card);
+        }
+        .myrecord-card-total{
+            font-size:18px;font-weight:800;color:var(--primary);
+        }
+        .myrecord-card-arrow{
+            color:var(--text-muted);font-size:18px;
+        }
+        .myrecord-empty{
+            text-align:center;padding:60px 20px;color:var(--text-muted);
+        }
+        .myrecord-empty-icon{
+            font-size:48px;margin-bottom:12px;opacity:0.5;
+        }
+        /* 我的记录详情页 */
+        .myrecord-detail-modal{
+            position:fixed;inset:0;background:var(--bg);z-index:160;
+            display:none;overflow-y:auto;
+        }
+        .myrecord-detail-modal.show{display:block;animation:slideInRight 0.3s ease;}
     </style>
 </head>
 <body>
@@ -409,6 +491,71 @@
     <div class="detail-bottom-bar">
         <button class="detail-btn-outline" id="detailAddBtn" onclick="">加入清单</button>
         <button class="detail-btn-solid" id="detailSubmitBtn" onclick="">提交登记</button>
+    </div>
+</div>
+<!-- 我的记录页面 - 飞书版风格 -->
+<div class="myrecord-modal" id="myrecordModal">
+    <div class="myrecord-header">
+        <button class="detail-back" onclick="closeMyRecord()" style="position:absolute;top:16px;left:16px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        </button>
+        <div class="myrecord-title">我的记录</div>
+        <div class="myrecord-subtitle">查看您提交过的意向记录</div>
+    </div>
+    <div class="myrecord-list" id="myrecordList"></div>
+</div>
+<!-- 我的记录详情页面 -->
+<div class="myrecord-detail-modal" id="myrecordDetailModal">
+    <div class="order-detail-header">
+        <button class="order-detail-back" onclick="closeMyRecordDetail()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        </button>
+        <div class="order-detail-title">
+            <div class="order-detail-no" id="mrDetailOrderNo"></div>
+            <div class="order-detail-time" id="mrDetailOrderTime"></div>
+        </div>
+        <span class="order-status" id="mrDetailOrderStatus"></span>
+    </div>
+    <div class="order-detail-content">
+        <div class="order-detail-card">
+            <h3>物品明细</h3>
+            <div id="mrDetailItems"></div>
+            <div class="order-detail-total">
+                <span class="order-detail-total-label">合计</span>
+                <span class="order-detail-total-value" id="mrDetailTotal"></span>
+            </div>
+        </div>
+        <div class="order-detail-card">
+            <h3>收货人信息</h3>
+            <div class="order-detail-contact-row">
+                <div class="order-detail-contact-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                </div>
+                <span class="order-detail-contact-label">收货人</span>
+                <span class="order-detail-contact-value" id="mrDetailUserName"></span>
+            </div>
+            <div class="order-detail-contact-row">
+                <div class="order-detail-contact-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                </div>
+                <span class="order-detail-contact-label">联系电话</span>
+                <span class="order-detail-contact-value" id="mrDetailUserPhone"></span>
+            </div>
+            <div class="order-detail-contact-row">
+                <div class="order-detail-contact-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                </div>
+                <span class="order-detail-contact-label">联系地址</span>
+                <span class="order-detail-contact-value" id="mrDetailUserAddr"></span>
+            </div>
+            <div class="order-detail-contact-row">
+                <div class="order-detail-contact-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                </div>
+                <span class="order-detail-contact-label">备注</span>
+                <span class="order-detail-contact-value" id="mrDetailNote"></span>
+            </div>
+        </div>
     </div>
 </div>
 <!-- 底部导航 -->
@@ -710,35 +857,99 @@ function submitAllOrder(){
 function openMyOrder(){
     const db=getDb();
     const myOrders=db.orders.filter(o=>o.deviceId===deviceId);
+    const listEl=document.getElementById("myrecordList");
     if(myOrders.length===0){
-        alert("您还没有提交过意向记录");
-        return;
+        listEl.innerHTML='<div class="myrecord-empty"><div class="myrecord-empty-icon">📋</div><div>您还没有提交过意向记录</div></div>';
+    }else{
+        let html="";
+        myOrders.forEach((o,idx)=>{
+            const createTime=o.createTime||o.createdAt||"未知时间";
+            const status=o.status==="pending"?"待处理":(o.status==="done"?"已处理":(o.status||"未知"));
+            const statusClass=o.status==="pending"?"pending":"done";
+            const total=typeof o.total==="number"?o.total:(o.total||"0");
+            const itemCount=o.items?o.items.length:0;
+            // 商品图片（最多显示3张，叠加效果）
+            let imgsHtml="";
+            if(o.items&&o.items.length>0){
+                const showItems=o.items.slice(0,3);
+                showItems.forEach((it,i)=>{
+                    const goods=db.goods.find(g=>g.name===(it.goodsName||it.name));
+                    const imgSrc=goods?goods.img:"";
+                    if(imgSrc){
+                        imgsHtml+=`<img class="myrecord-card-img" src="${imgSrc}" alt="" style="z-index:${3-i}">`;
+                    }
+                });
+                if(o.items.length>1){
+                    imgsHtml+=`<div class="myrecord-card-img-badge">${o.items.length}</div>`;
+                }
+            }
+            html+=`
+            <div class="myrecord-card" onclick="showMyRecordDetail(${idx})">
+                <div class="myrecord-card-left">
+                    <div class="myrecord-card-no">${o.orderNo||o.id||"未知"} <span class="myrecord-status ${statusClass}">${status}</span></div>
+                    <div class="myrecord-card-time">${createTime}</div>
+                    <div class="myrecord-card-count">共 ${itemCount} 件物品</div>
+                </div>
+                <div class="myrecord-card-right">
+                    <div class="myrecord-card-imgs">${imgsHtml}</div>
+                    <div class="myrecord-card-total">合计 ${total}</div>
+                </div>
+                <div class="myrecord-card-arrow">›</div>
+            </div>`;
+        });
+        listEl.innerHTML=html;
     }
-    let msg="我的提交记录：\n\n";
-    myOrders.forEach((o,i)=>{
-        const createTime=o.createTime||o.createdAt||"未知时间";
-        const userName=o.userName||o.name||"未填写";
-        const userPhone=o.userPhone||o.phone||"未填写";
-        const userAddr=o.userAddr||o.addr||"未填写";
-        const status=o.status==="pending"?"待处理":(o.status==="done"?"已处理":(o.status||"未知"));
-        const total=typeof o.total==="number"?o.total.toFixed(2):(o.total||"0");
-        msg+=`【${i+1}】${createTime}\n`;
-        msg+=`姓名：${userName} | 电话：${userPhone}\n`;
-        msg+=`地址：${userAddr}\n`;
-        if(o.items&&o.items.length>0){
-            o.items.forEach(it=>{
-                const goodsName=it.goodsName||it.name||"未知商品";
-                const qty=it.qty||1;
-                const sub=it.sub!==undefined?it.sub:(it.subtotal!==undefined?it.subtotal:"0");
-                const subStr=typeof sub==="number"?sub.toFixed(2):sub;
-                msg+=`  ${goodsName} ×${qty} = ¥${subStr}\n`;
-            });
-        }
-        msg+=`合计：¥${total} | 状态：${status}\n`;
-        if(o.note) msg+=`备注：${o.note}\n`;
-        msg+="\n";
-    });
-    alert(msg);
+    document.getElementById("myrecordModal").classList.add("show");
+    document.body.style.overflow="hidden";
+}
+let myRecordOrdersCache=[];
+window.showMyRecordDetail=function(idx){
+    const db=getDb();
+    const myOrders=db.orders.filter(o=>o.deviceId===deviceId);
+    myRecordOrdersCache=myOrders;
+    const o=myOrders[idx];
+    if(!o) return;
+    document.getElementById("mrDetailOrderNo").innerText=o.orderNo||o.id||"未知";
+    document.getElementById("mrDetailOrderTime").innerText="提交时间："+(o.createTime||o.createdAt||"未知时间");
+    const statusEl=document.getElementById("mrDetailOrderStatus");
+    const status=o.status==="pending"?"待处理":(o.status==="done"?"已处理":(o.status||"未知"));
+    statusEl.className="order-status "+(o.status==="pending"?"pending":"done");
+    statusEl.innerText=status;
+    // 物品明细
+    let itemsHtml="";
+    if(o.items&&o.items.length>0){
+        o.items.forEach(it=>{
+            const goodsName=it.goodsName||it.name||"未知商品";
+            const qty=it.qty||1;
+            const sub=it.sub!==undefined?it.sub:(it.subtotal!==undefined?it.subtotal:"0");
+            const goods=db.goods.find(g=>g.name===goodsName);
+            const imgSrc=goods?goods.img:"";
+            itemsHtml+=`
+            <div class="order-detail-item">
+                ${imgSrc?`<img class="order-detail-item-img" src="${imgSrc}" alt="${goodsName}">`:''}
+                <div class="order-detail-item-info">
+                    <div class="order-detail-item-name">${goodsName}</div>
+                    <div class="order-detail-item-qty">数量：${qty}件</div>
+                </div>
+                <div class="order-detail-item-price">编号 ${sub}</div>
+            </div>`;
+        });
+    }
+    document.getElementById("mrDetailItems").innerHTML=itemsHtml;
+    document.getElementById("mrDetailTotal").innerText=o.total||"0";
+    document.getElementById("mrDetailUserName").innerText=o.userName||o.name||"未填写";
+    document.getElementById("mrDetailUserPhone").innerText=o.userPhone||o.phone||"未填写";
+    document.getElementById("mrDetailUserAddr").innerText=o.userAddr||o.addr||"未填写";
+    document.getElementById("mrDetailNote").innerText=o.note||"无";
+    document.getElementById("myrecordDetailModal").classList.add("show");
+}
+window.closeMyRecordDetail=function(){
+    document.getElementById("myrecordDetailModal").classList.remove("show");
+}
+window.closeMyRecord=function(){
+    document.getElementById("myrecordModal").classList.remove("show");
+    document.getElementById("myrecordDetailModal").classList.remove("show");
+    document.body.style.overflow="";
 }
 /* 浮动按钮拖拽 */
 (function(){
