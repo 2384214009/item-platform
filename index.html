@@ -262,7 +262,7 @@ function getDb(){
     return db;
   }catch(e){ localStorage.setItem('shop_db', JSON.stringify(DEFAULT)); return JSON.parse(JSON.stringify(DEFAULT)); }
 }
-function saveDb(db){ localStorage.setItem('shop_db', JSON.stringify(db)); }
+function saveDb(db){ try{ localStorage.setItem('shop_db', JSON.stringify(db)); }catch(e){ if(e.name==='QuotaExceededError'||e.code===22){ showToast('存储空间不足，请在管理后台删除部分旧物品或订单后重试'); }else{ showToast('保存失败'); } throw e; } }
 function getGrad(catId){ if(catId==='aixi')return'grad-1'; if(catId==='alishan')return'grad-2'; if(catId==='baile')return'grad-3'; return'grad-0'; }
 function getCatName(catId){ var db=getDb(); var c=db.categories.find(function(x){return x.id===catId;}); return c?c.name:''; }
 function getGoodsById(id){ var db=getDb(); return db.goods.find(function(g){return g.id===id;}); }
