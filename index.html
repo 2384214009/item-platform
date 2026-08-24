@@ -274,7 +274,7 @@ function getCatName(catId){ var db=getDb(); var c=db.categories.find(function(x)
 function getGoodsById(id){ var db=getDb(); return db.goods.find(function(g){return g.id===id;}); }
 function getGoodsByName(name){ var db=getDb(); return db.goods.find(function(g){return g.name===name;}); }
 function showToast(msg){ var t=document.getElementById('toast'); t.innerText=msg; t.className='toast show'; setTimeout(function(){t.className='toast';},2000); }
-function codeToNum(code){ if(!code)return 0; var n=parseFloat(String(code).replace(/[^0-9.]/g,'')); return isNaN(n)?0:n; }
+function codeToNum(code){ if(!code)return 0; var n=parseFloat(String(code).replace(/[^0-9]/g,'')); return isNaN(n)?0:n; }
 var curCat='all', searchKey='', curDetailId=null, detailQty=1;
 function init(){ try{ renderBarrage(); renderCats(); renderGoods(); refreshBadge(); initFabDrag(); }catch(e){ console.error('init error',e); } }
 function renderBarrage(){
