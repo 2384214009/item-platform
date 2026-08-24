@@ -18,12 +18,12 @@
             --border:#e4ecec;
             --danger:#e74c3c;
             --warn:#f39c12;
-            --radius-sm:8px;
-            --radius-md:12px;
-            --radius-lg:16px;
-            --shadow-sm:0 1px 3px rgba(0,0,0,0.06);
-            --shadow-md:0 4px 12px rgba(0,0,0,0.08);
-            --shadow-lg:0 8px 24px rgba(0,0,0,0.12);
+            --radius-sm:10px;
+            --radius-md:16px;
+            --radius-lg:24px;
+            --shadow-sm:0 1px 4px rgba(0,0,0,0.04);
+            --shadow-md:0 4px 14px rgba(0,0,0,0.06);
+            --shadow-lg:0 8px 28px rgba(0,0,0,0.1);
         }
         html,body{
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
@@ -32,8 +32,7 @@
             -webkit-font-smoothing:antialiased;
             -webkit-tap-highlight-color:transparent;
         }
-        body{padding:12px;padding-bottom:80px;max-width:520px;margin:0 auto;min-height:100vh;}
-
+        body{padding:12px;padding-bottom:90px;max-width:520px;margin:0 auto;min-height:100vh;}
         /* 公告条 */
         .barrage-wrap{
             overflow:hidden;
@@ -54,92 +53,97 @@
             color:#0a6e66;transition:background 0.2s;
         }
         .barrage-close:hover{background:#fff;}
-
         /* 头部 */
-        header{text-align:center;padding:16px 0 14px;margin-bottom:14px;}
+        header{text-align:left;padding:16px 4px 14px;margin-bottom:14px;}
         h1{
-            color:var(--primary);font-size:24px;margin-bottom:6px;font-weight:700;
+            color:var(--primary);font-size:26px;margin-bottom:6px;font-weight:700;
             letter-spacing:1px;
         }
-        .desc{font-size:13px;color:var(--text-secondary);}
-
+        .desc{font-size:14px;color:var(--text-secondary);}
         /* 搜索框 */
+        .search-wrap{
+            position:relative;margin-bottom:16px;
+        }
+        .search-icon{
+            position:absolute;left:16px;top:50%;transform:translateY(-50%);
+            font-size:18px;color:var(--text-muted);pointer-events:none;
+        }
         .search-box{
-            width:100%;padding:12px 16px;border:1.5px solid var(--border);
-            border-radius:var(--radius-lg);margin-bottom:14px;font-size:14px;
+            width:100%;padding:14px 16px 14px 44px;border:1.5px solid var(--border);
+            border-radius:var(--radius-lg);font-size:15px;
             background:var(--card);transition:border-color 0.2s,box-shadow 0.2s;
             outline:none;
         }
         .search-box:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(46,180,168,0.12);}
-
         /* 分类 */
         .category-scroll{
-            display:flex;gap:8px;overflow-x:auto;padding:4px 0 10px;margin-bottom:16px;
+            display:flex;gap:10px;overflow-x:auto;padding:2px 0 14px;
             scrollbar-width:none;-ms-overflow-style:none;
         }
         .category-scroll::-webkit-scrollbar{display:none;}
         .cat-item{
-            white-space:nowrap;padding:8px 18px;background:var(--card);
-            border-radius:20px;font-size:14px;flex-shrink:0;cursor:pointer;
+            white-space:nowrap;padding:10px 22px;background:var(--card);
+            border-radius:24px;font-size:15px;flex-shrink:0;cursor:pointer;
             border:1.5px solid var(--border);color:var(--text-secondary);font-weight:500;
             transition:all 0.2s;
         }
         .cat-item:hover{border-color:var(--primary);color:var(--primary);}
         .cat-item.active{
-            background:linear-gradient(135deg,var(--primary),var(--primary-dark));
-            color:#fff;border-color:transparent;box-shadow:0 4px 12px rgba(46,180,168,0.3);
+            background:var(--primary);
+            color:#fff;border-color:transparent;box-shadow:0 4px 12px rgba(46,180,168,0.25);
         }
-
         /* 商品列表 */
-        .goods-list{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+        .goods-list{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
         .goods-card{
-            background:var(--card);border-radius:var(--radius-md);overflow:hidden;
+            background:var(--card);border-radius:var(--radius-lg);overflow:hidden;
             box-shadow:var(--shadow-sm);position:relative;transition:transform 0.2s,box-shadow 0.2s;
+            cursor:pointer;
         }
         .goods-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-md);}
+        .goods-card:active{transform:scale(0.98);}
         .sellout-tag{
-            position:absolute;top:8px;right:8px;background:var(--danger);color:#fff;
-            font-size:11px;padding:3px 8px;border-radius:12px;font-weight:600;z-index:2;
+            position:absolute;top:10px;right:10px;background:var(--danger);color:#fff;
+            font-size:11px;padding:4px 10px;border-radius:14px;font-weight:600;z-index:2;
             box-shadow:0 2px 6px rgba(231,76,60,0.3);
         }
-        .goods-img{width:100%;height:140px;object-fit:cover;display:block;background:#f0f0f0;}
-        .goods-img.sellout{opacity:0.4;filter:grayscale(0.6);}
-        .goods-info{padding:10px 12px 12px;}
-        .goods-name{font-weight:600;font-size:14px;margin-bottom:4px;color:var(--text);line-height:1.3;}
-        .goods-price{color:var(--primary);font-weight:bold;font-size:17px;}
-        .goods-price::before{content:"¥";font-size:13px;margin-right:1px;}
-        .goods-desc{
-            font-size:12px;color:var(--text-secondary);margin:5px 0 10px;
-            display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
-            overflow:hidden;line-height:1.4;min-height:34px;
+        .goods-img-wrap{
+            width:100%;aspect-ratio:4/3;background:#f5f7f7;
+            display:flex;align-items:center;justify-content:center;
+            overflow:hidden;border-radius:var(--radius-lg) var(--radius-lg) 0 0;
         }
-        .cart-row{display:flex;gap:6px;}
+        .goods-img{
+            max-width:100%;max-height:100%;object-fit:contain;display:block;
+            border-radius:var(--radius-md);
+        }
+        .goods-img.sellout{opacity:0.4;filter:grayscale(0.6);}
+        .goods-info{padding:12px 14px 14px;}
+        .goods-name{font-weight:700;font-size:17px;margin-bottom:6px;color:var(--text);line-height:1.3;}
+        .goods-code{font-size:13px;color:var(--text-secondary);margin-bottom:10px;font-weight:500;}
+        .goods-code b{color:var(--text);font-weight:700;font-size:15px;margin-left:2px;}
         .cart-add{
-            flex:1;padding:9px;border:none;border-radius:var(--radius-sm);
-            font-size:13px;background:var(--primary-light);color:var(--primary-dark);
+            width:100%;padding:11px;border:none;border-radius:var(--radius-md);
+            font-size:15px;background:var(--primary);color:#fff;
             font-weight:600;cursor:pointer;transition:all 0.2s;
         }
-        .cart-add:hover{background:var(--primary);color:#fff;}
+        .cart-add:hover{background:var(--primary-dark);}
         .cart-add:active{transform:scale(0.97);}
         .btn-disabled{
             background:#e8e8e8 !important;color:#aaa !important;cursor:not-allowed !important;
         }
         .btn-disabled:hover{background:#e8e8e8 !important;color:#aaa !important;}
-
         /* 空状态 */
         .empty-state{
             grid-column:1/-1;text-align:center;padding:48px 20px;color:var(--text-muted);
         }
         .empty-state .empty-icon{font-size:48px;margin-bottom:12px;opacity:0.5;}
         .empty-state .empty-text{font-size:14px;}
-
         /* 浮动按钮 */
         .cart-float{
-            position:fixed;bottom:84px;right:calc(50% - 260px + 16px);
-            width:56px;height:56px;border-radius:50%;
-            background:linear-gradient(135deg,var(--primary),var(--primary-dark));
+            position:fixed;bottom:90px;right:calc(50% - 260px + 16px);
+            width:58px;height:58px;border-radius:50%;
+            background:var(--primary);
             color:#fff;display:flex;align-items:center;justify-content:center;
-            font-size:24px;box-shadow:var(--shadow-lg);
+            font-size:26px;box-shadow:var(--shadow-lg);
             z-index:50;cursor:grab;transition:transform 0.15s,box-shadow 0.25s;
             border:none;touch-action:none;user-select:none;-webkit-user-select:none;
         }
@@ -152,7 +156,6 @@
             border-radius:50%;font-size:11px;display:flex;align-items:center;justify-content:center;
             font-weight:700;border:2px solid #fff;
         }
-
         /* 购物车弹窗 */
         .cart-modal{
             position:fixed;inset:0;background:rgba(0,0,0,0.4);display:none;z-index:99;
@@ -205,17 +208,15 @@
         }
         .cart-qty .remove-btn:hover{border-color:var(--danger);color:var(--danger);}
         .cart-item > div:last-child{font-weight:700;font-size:14px;color:var(--text);flex-shrink:0;}
-
         .submit-order{
             width:100%;padding:13px;border:none;border-radius:var(--radius-md);
-            background:linear-gradient(135deg,var(--primary),var(--primary-dark));
+            background:var(--primary);
             color:#fff;font-size:15px;font-weight:600;cursor:pointer;
             transition:transform 0.15s,box-shadow 0.2s;
             box-shadow:0 4px 12px rgba(46,180,168,0.3);
         }
-        .submit-order:hover{box-shadow:0 6px 18px rgba(46,180,168,0.4);}
+        .submit-order:hover{background:var(--primary-dark);}
         .submit-order:active{transform:scale(0.98);}
-
         /* 订单弹窗 */
         .order-modal{
             position:fixed;inset:0;background:rgba(0,0,0,0.4);display:none;
@@ -249,22 +250,54 @@
         }
         input:focus,textarea:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(46,180,168,0.12);}
         textarea{resize:vertical;min-height:60px;}
-
-        /* 底部导航 */
+        /* 商品详情弹窗 */
+        .detail-modal{
+            position:fixed;inset:0;background:rgba(0,0,0,0.5);display:none;
+            align-items:center;justify-content:center;padding:14px;z-index:101;
+            backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);
+        }
+        .detail-modal.show{display:flex;animation:fadeIn 0.2s ease;}
+        .detail-box{
+            background:var(--card);width:100%;max-width:420px;border-radius:var(--radius-lg);
+            max-height:85vh;overflow-y:auto;
+            animation:popIn 0.3s cubic-bezier(0.16,1,0.3,1);
+            box-shadow:var(--shadow-lg);
+        }
+        .detail-img-wrap{
+            width:100%;aspect-ratio:4/3;background:#f5f7f7;
+            display:flex;align-items:center;justify-content:center;
+            overflow:hidden;border-radius:var(--radius-lg) var(--radius-lg) 0 0;
+        }
+        .detail-img{max-width:100%;max-height:100%;object-fit:contain;}
+        .detail-body{padding:18px 20px 20px;}
+        .detail-name{font-size:22px;font-weight:700;margin-bottom:6px;color:var(--text);}
+        .detail-code{font-size:14px;color:var(--text-secondary);margin-bottom:10px;}
+        .detail-code b{color:var(--text);font-weight:700;}
+        .detail-price{color:var(--primary);font-size:24px;font-weight:700;margin-bottom:12px;}
+        .detail-price::before{content:"¥";font-size:16px;margin-right:2px;}
+        .detail-desc{font-size:14px;color:var(--text-secondary);line-height:1.6;margin-bottom:18px;}
+        .detail-close{
+            position:absolute;top:14px;right:14px;width:32px;height:32px;
+            border-radius:50%;background:rgba(255,255,255,0.9);border:none;
+            font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+            color:var(--text);z-index:2;transition:background 0.2s;
+        }
+        .detail-close:hover{background:#fff;}
+        /* 底部导航 - 飞书版简洁风格 */
         .nav-bottom{
             position:fixed;bottom:0;left:50%;transform:translateX(-50%);
-            background:rgba(255,255,255,0.95);backdrop-filter:blur(10px);
-            -webkit-backdrop-filter:blur(10px);
-            display:flex;border-top:1px solid var(--border);z-index:10;
-            width:100%;max-width:520px;box-shadow:0 -2px 12px rgba(0,0,0,0.05);
+            background:#ffffff;
+            display:flex;border-top:1px solid #f0f0f0;z-index:10;
+            width:100%;max-width:520px;
+            padding-bottom:env(safe-area-inset-bottom);
         }
         .nav-bottom button{
-            flex:1;padding:10px 0 8px;border:none;background:transparent;
+            flex:1;padding:10px 0 12px;border:none;background:transparent;
             font-size:12px;color:var(--text-muted);cursor:pointer;
-            display:flex;flex-direction:column;align-items:center;gap:3px;
+            display:flex;flex-direction:column;align-items:center;gap:4px;
             transition:color 0.2s;font-family:inherit;
         }
-        .nav-bottom button .nav-icon{font-size:20px;line-height:1;}
+        .nav-bottom button .nav-icon{font-size:22px;line-height:1;}
         .nav-bottom button:hover{color:var(--primary);}
         .nav-bottom button.active{color:var(--primary);font-weight:600;}
     </style>
@@ -276,15 +309,19 @@
 </div>
 <header>
     <h1>物品展示选择平台</h1>
-    <div class="desc">浏览物品，添加意向清单</div>
+    <div class="desc">物品展示与信息登记平台</div>
 </header>
-<input class="search-box" placeholder="搜索物品关键词" id="searchInput" oninput="doSearch()">
+<div class="search-wrap">
+    <span class="search-icon">🔍</span>
+    <input class="search-box" placeholder="搜索物品关键词" id="searchInput" oninput="doSearch()">
+</div>
 <div class="category-scroll" id="catScroll"></div>
 <div class="goods-list" id="goodsList"></div>
 <div class="cart-float" id="cartFloatBtn">
     📋
     <span class="cart-badge" id="cartBadge">0</span>
 </div>
+<!-- 购物车弹窗 -->
 <div class="cart-modal" id="cartModal">
     <div class="cart-panel">
         <div class="cart-head">
@@ -298,6 +335,7 @@
         </div>
     </div>
 </div>
+<!-- 订单弹窗 -->
 <div class="order-modal" id="orderModal">
     <div class="modal-box">
         <h3>填写联系信息</h3>
@@ -310,6 +348,21 @@
         <button class="submit-order" onclick="submitAllOrder()">确认提交</button>
     </div>
 </div>
+<!-- 商品详情弹窗 -->
+<div class="detail-modal" id="detailModal">
+    <div class="detail-box" id="detailBox">
+        <button class="detail-close" onclick="closeDetail()">×</button>
+        <div class="detail-img-wrap"><img class="detail-img" id="detailImg" src="" alt=""></div>
+        <div class="detail-body">
+            <div class="detail-name" id="detailName"></div>
+            <div class="detail-code">编号 <b id="detailCode"></b></div>
+            <div class="detail-price" id="detailPrice"></div>
+            <div class="detail-desc" id="detailDesc"></div>
+            <button class="submit-order" id="detailAddBtn" onclick="">加入清单</button>
+        </div>
+    </div>
+</div>
+<!-- 底部导航 -->
 <div class="nav-bottom">
     <button class="active" onclick="location.href='index.html'"><span class="nav-icon">🏠</span>首页</button>
     <button onclick="openMyOrder()"><span class="nav-icon">📋</span>我的记录</button>
@@ -325,12 +378,12 @@ function getDb(){
     const raw = localStorage.getItem("shop_db");
     return raw ? JSON.parse(raw) : {
         goods:[
-            {id:1,catId:"aixi",name:"爱喜 酸奶",price:18,desc:"经典酸奶口味，清爽顺滑",img:"https://images.unsplash.com/photo-1488477181946-6428a0291777?w=400",sellout:false},
-            {id:2,catId:"aixi",name:"爱喜 香芋",price:18,desc:"浓郁香芋风味，绵密细腻",img:"https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=400",sellout:false},
-            {id:3,catId:"aixi",name:"爱喜 茉莉",price:20,desc:"清新茉莉花香，回味悠长",img:"https://images.unsplash.com/photo-1564890369478-c89ca6d9cde9?w=400",sellout:false},
-            {id:4,catId:"alishan",name:"阿里山 天韵",price:25,desc:"阿里山经典系列，口感醇厚",img:"https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=400",sellout:false},
-            {id:5,catId:"alishan",name:"阿里山 芒果",price:22,desc:"热带芒果风味，果香四溢",img:"https://images.unsplash.com/photo-1553279768-86542fa0078?w=400",sellout:false},
-            {id:6,catId:"baile",name:"百乐 原味",price:15,desc:"百乐经典原味，简约之选",img:"https://images.unsplash.com/photo-1578913130218-2f66c2b3a1a0?w=400",sellout:false},
+            {id:1,catId:"aixi",name:"酸奶",code:"No.23",price:18,desc:"经典酸奶口味，清爽顺滑，爱喜系列经典款",img:"https://images.unsplash.com/photo-1488477181946-6428a0291777?w=400",sellout:false},
+            {id:2,catId:"aixi",name:"香芋",code:"No.23",price:18,desc:"浓郁香芋风味，绵密细腻，爱喜系列人气款",img:"https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=400",sellout:false},
+            {id:3,catId:"aixi",name:"茉莉",code:"No.23",price:20,desc:"清新茉莉花香，回味悠长，爱喜系列高端款",img:"https://images.unsplash.com/photo-1564890369478-c89ca6d9cde9?w=400",sellout:false},
+            {id:4,catId:"alishan",name:"天韵",code:"No.38",price:25,desc:"阿里山经典系列，口感醇厚，阿里山招牌款",img:"https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=400",sellout:false},
+            {id:5,catId:"alishan",name:"芒果",code:"No.38",price:22,desc:"热带芒果风味，果香四溢，阿里山果味系列",img:"https://images.unsplash.com/photo-1553279768-86542fa0078?w=400",sellout:false},
+            {id:6,catId:"baile",name:"原味",code:"No.15",price:15,desc:"百乐经典原味，简约之选，百乐入门款",img:"https://images.unsplash.com/photo-1578913130218-2f66c2b3a1a0?w=400",sellout:false},
         ],
         orders:[],
         categories:[
@@ -344,7 +397,6 @@ function getDb(){
     };
 }
 function saveDb(db){localStorage.setItem("shop_db",JSON.stringify(db));}
-
 function renderBulletin(){
     const db = getDb();
     const wrap = document.getElementById("barrageWrap");
@@ -359,7 +411,6 @@ function closeBarrage(){
     sessionStorage.setItem("barrage_closed","1");
     document.getElementById("barrageWrap").style.display="none";
 }
-
 let currentCat = "all";
 let searchKey = "";
 function renderCats(){
@@ -372,7 +423,6 @@ function renderCats(){
 }
 function switchCat(cid){currentCat=cid;renderCats();renderGoods();}
 function doSearch(){searchKey=document.getElementById("searchInput").value.trim().toLowerCase();renderGoods();}
-
 function renderGoods(){
     const db = getDb();
     const wrap = document.getElementById("goodsList");
@@ -389,23 +439,55 @@ function renderGoods(){
         const isSellout = item.sellout===true;
         const card = document.createElement("div");
         card.className="goods-card";
+        card.onclick = function(e){
+            if(e.target.closest('.cart-add')) return;
+            openDetail(item.id);
+        };
         card.innerHTML=`
             ${isSellout?'<span class="sellout-tag">已无库存</span>':''}
-            <img class="goods-img ${isSellout?'sellout':''}" src="${item.img}" alt="${item.name}" loading="lazy">
+            <div class="goods-img-wrap">
+                <img class="goods-img ${isSellout?'sellout':''}" src="${item.img}" alt="${item.name}" loading="lazy">
+            </div>
             <div class="goods-info">
                 <div class="goods-name">${item.name}</div>
-                <div class="goods-price">${item.price}</div>
-                <div class="goods-desc">${item.desc}</div>
-                <div class="cart-row">
-                    <button class="cart-add ${isSellout?'btn-disabled':''}" onclick="addToCart(${item.id})" ${isSellout?'disabled':''}>加入清单</button>
-                </div>
+                <div class="goods-code">编号 <b>${item.code}</b></div>
+                <button class="cart-add ${isSellout?'btn-disabled':''}" onclick="event.stopPropagation();addToCart(${item.id})" ${isSellout?'disabled':''}>加入清单</button>
             </div>
         `;
         wrap.appendChild(card);
     });
     refreshCartBadge();
 }
-
+/* 商品详情 */
+function openDetail(goodsId){
+    const db=getDb();
+    const item=db.goods.find(g=>g.id===goodsId);
+    if(!item) return;
+    document.getElementById("detailImg").src=item.img;
+    document.getElementById("detailImg").alt=item.name;
+    document.getElementById("detailName").innerText=item.name;
+    document.getElementById("detailCode").innerText=item.code;
+    document.getElementById("detailPrice").innerText=item.price;
+    document.getElementById("detailDesc").innerText=item.desc;
+    const addBtn=document.getElementById("detailAddBtn");
+    if(item.sellout){
+        addBtn.innerText="已无库存";
+        addBtn.classList.add("btn-disabled");
+        addBtn.disabled=true;
+    }else{
+        addBtn.innerText="加入清单";
+        addBtn.classList.remove("btn-disabled");
+        addBtn.disabled=false;
+        addBtn.onclick=function(){addToCart(item.id);closeDetail();};
+    }
+    document.getElementById("detailModal").classList.add("show");
+}
+function closeDetail(){
+    document.getElementById("detailModal").classList.remove("show");
+}
+document.getElementById("detailModal").addEventListener("click",function(e){
+    if(e.target===this) closeDetail();
+});
 function getCart(){const raw=localStorage.getItem("shop_cart");return raw?JSON.parse(raw):[];}
 function saveCart(arr){localStorage.setItem("shop_cart",JSON.stringify(arr));}
 function addToCart(goodsId){
@@ -419,7 +501,6 @@ function refreshCartBadge(){
     const cart=getCart();const total=cart.reduce((s,i)=>s+i.qty,0);
     document.getElementById("cartBadge").innerText=total;
 }
-
 function openCartModal(){
     const modal=document.getElementById("cartModal");
     modal.classList.add("show");modal.style.display="block";
@@ -473,151 +554,161 @@ function cartMinus(gid){
     saveCart(cart);renderCartPanel();refreshCartBadge();
 }
 function cartPlus(gid){
+    const db=getDb();const g=db.goods.find(x=>x.id===gid);
+    if(g&&g.sellout) return alert("该物品已无库存");
     let cart=getCart();const idx=cart.findIndex(i=>i.gid===gid);
-    if(idx!==-1) cart[idx].qty+=1;
+    if(idx===-1) return;
+    cart[idx].qty+=1;
     saveCart(cart);renderCartPanel();refreshCartBadge();
 }
 function cartDel(gid){
     let cart=getCart();cart=cart.filter(i=>i.gid!==gid);
     saveCart(cart);renderCartPanel();refreshCartBadge();
 }
-
 function goCheckout(){
-    const db=getDb();const cart=getCart();
-    if(cart.length===0){alert("清单为空");return;}
-    const hasSellout=cart.some(c=>{const g=db.goods.find(x=>x.id===c.gid);return g?.sellout;});
-    if(hasSellout){alert("清单内存在无库存物品，请先移除");return;}
+    const cart=getCart();
+    if(cart.length===0) return alert("清单还是空的，先添加物品吧");
     closeCartModal();
-    setTimeout(()=>{
-        const modal=document.getElementById("orderModal");
-        modal.classList.add("show");modal.style.display="flex";
-        let html="";let sum=0;
-        cart.forEach(c=>{
-            const g=db.goods.find(x=>x.id===c.gid);
-            sum+=Number(g.price)*c.qty;
-            html+=`<div><span>${g.name} ×${c.qty}</span><span>¥${Number(g.price)*c.qty}</span></div>`;
-        });
-        document.getElementById("orderListShow").innerHTML=html;
-        document.getElementById("orderTotalShow").innerText="¥"+sum.toFixed(2);
-    },200);
+    const db=getDb();
+    const listShow=document.getElementById("orderListShow");
+    listShow.innerHTML="";
+    let total=0;
+    cart.forEach(item=>{
+        const g=db.goods.find(x=>x.id===item.gid);
+        if(!g) return;
+        const subtotal=Number(g.price)*item.qty;
+        total+=subtotal;
+        listShow.innerHTML+=`<div><span>${g.name} ×${item.qty}</span><span>¥${subtotal.toFixed(2)}</span></div>`;
+    });
+    document.getElementById("orderTotalShow").innerText="¥"+total.toFixed(2);
+    document.getElementById("orderModal").classList.add("show");
 }
 function submitAllOrder(){
     const name=document.getElementById("userName").value.trim();
     const phone=document.getElementById("userPhone").value.trim();
     const addr=document.getElementById("userAddr").value.trim();
     const note=document.getElementById("userNote").value.trim();
-    if(!name||!phone||!addr){alert("姓名、电话、地址为必填项");return;}
-    const db=getDb();const cart=getCart();
-    let sum=0;const itemList=[];
-    cart.forEach(c=>{
-        const g=db.goods.find(x=>x.id===c.gid);
-        sum+=Number(g.price)*c.qty;
-        itemList.push({goodsId:g.id,goodsName:g.name,price:g.price,qty:c.qty,sub:Number(g.price)*c.qty});
+    if(!name) return alert("请填写姓名");
+    if(!phone) return alert("请填写联系电话");
+    const db=getDb();
+    const cart=getCart();
+    let total=0;
+    const items=[];
+    cart.forEach(item=>{
+        const g=db.goods.find(x=>x.id===item.gid);
+        if(!g) return;
+        const subtotal=Number(g.price)*item.qty;
+        total+=subtotal;
+        items.push({name:g.name,qty:item.qty,price:g.price,subtotal});
     });
-    const newOrder={
-        orderNo:"REC"+Date.now(),deviceId:deviceId,items:itemList,
-        userName:name,userPhone:phone,userAddr:addr,note:note,
-        total:sum.toFixed(2),status:"pending",createTime:new Date().toLocaleString()
+    const order={
+        id:"ord_"+Date.now(),
+        deviceId:deviceId,
+        name:name,phone:phone,addr:addr,note:note,
+        items:items,total:total,
+        createdAt:new Date().toLocaleString("zh-CN"),
+        status:"待处理"
     };
-    db.orders.push(newOrder);saveDb(db);saveCart([]);refreshCartBadge();
-    alert(`提交完成，记录编号：${newOrder.orderNo}`);
-    const modal=document.getElementById("orderModal");
-    modal.classList.remove("show");
-    setTimeout(()=>{modal.style.display="none";},200);
+    db.orders.unshift(order);
+    saveDb(db);
+    saveCart([]);
+    document.getElementById("orderModal").classList.remove("show");
     document.getElementById("userName").value="";
     document.getElementById("userPhone").value="";
     document.getElementById("userAddr").value="";
     document.getElementById("userNote").value="";
+    refreshCartBadge();
+    alert("提交成功！您的意向信息已登记，我们会尽快与您联系。");
 }
 function openMyOrder(){
-    const db=getDb();const my=db.orders.filter(o=>o.deviceId===deviceId);
-    let str="==== 我的提交记录 ====\n";
-    if(my.length===0){alert("暂无提交记录");return;}
-    my.forEach(o=>{
-        str+=`\n记录编号：${o.orderNo} ${o.status==='pending'?'【待处理】':'【已处理】'}\n`;
-        o.items.forEach(it=>str+=`${it.goodsName} ×${it.qty} ¥${it.sub}\n`);
-        str+=`合计：${o.total} 时间：${o.createTime}\n`;
+    const db=getDb();
+    const myOrders=db.orders.filter(o=>o.deviceId===deviceId);
+    if(myOrders.length===0){
+        alert("您还没有提交过意向记录");
+        return;
+    }
+    let msg="我的提交记录：\n\n";
+    myOrders.forEach((o,i)=>{
+        msg+=`【${i+1}】${o.createdAt}\n`;
+        msg+=`姓名：${o.name} | 电话：${o.phone}\n`;
+        msg+=`地址：${o.addr}\n`;
+        o.items.forEach(it=>{msg+=`  ${it.name} ×${it.qty} = ¥${it.subtotal.toFixed(2)}\n`;});
+        msg+=`合计：¥${o.total.toFixed(2)} | 状态：${o.status}\n`;
+        if(o.note) msg+=`备注：${o.note}\n`;
+        msg+="\n";
     });
-    alert(str);
+    alert(msg);
 }
-
-// ===== 浮动按钮拖拽功能 =====
+/* 浮动按钮拖拽 */
 (function(){
-    const btn = document.getElementById("cartFloatBtn");
-    const BTN_SIZE = 56;
-    let isDragging = false, hasMoved = false;
-    let startX = 0, startY = 0, offsetX = 0, offsetY = 0;
-
-    const savedPos = localStorage.getItem("cart_float_pos_cn");
+    const btn=document.getElementById("cartFloatBtn");
+    let isDragging=false;
+    let startX,startY,startLeft,startTop;
+    let moved=false;
+    const savedPos=localStorage.getItem("cart_float_pos");
     if(savedPos){
         try{
-            const pos = JSON.parse(savedPos);
-            btn.style.left = pos.x + "px";
-            btn.style.top = pos.y + "px";
-            btn.style.right = "auto";
-            btn.style.bottom = "auto";
+            const pos=JSON.parse(savedPos);
+            btn.style.left=pos.left+"px";
+            btn.style.top=pos.top+"px";
+            btn.style.right="auto";
+            btn.style.bottom="auto";
         }catch(e){}
     }
-
-    function getPoint(e){return e.touches ? e.touches[0] : e;}
+    function getPos(e){
+        if(e.touches&&e.touches.length>0) return {x:e.touches[0].clientX,y:e.touches[0].clientY};
+        return {x:e.clientX,y:e.clientY};
+    }
     function onStart(e){
-        const p = getPoint(e);
-        const rect = btn.getBoundingClientRect();
-        startX = p.clientX; startY = p.clientY;
-        offsetX = p.clientX - rect.left;
-        offsetY = p.clientY - rect.top;
-        isDragging = true; hasMoved = false;
+        isDragging=true;moved=false;
+        const pos=getPos(e);
+        startX=pos.x;startY=pos.y;
+        const rect=btn.getBoundingClientRect();
+        startLeft=rect.left;startTop=rect.top;
         btn.classList.add("dragging");
         e.preventDefault();
     }
     function onMove(e){
         if(!isDragging) return;
-        const p = getPoint(e);
-        const dx = p.clientX - startX, dy = p.clientY - startY;
-        if(Math.abs(dx) > 5 || Math.abs(dy) > 5) hasMoved = true;
-        if(hasMoved){
-            let x = p.clientX - offsetX, y = p.clientY - offsetY;
-            x = Math.max(4, Math.min(window.innerWidth - BTN_SIZE - 4, x));
-            y = Math.max(4, Math.min(window.innerHeight - BTN_SIZE - 4, y));
-            btn.style.left = x + "px";
-            btn.style.top = y + "px";
-            btn.style.right = "auto";
-            btn.style.bottom = "auto";
-            e.preventDefault();
-        }
+        const pos=getPos(e);
+        const dx=pos.x-startX;
+        const dy=pos.y-startY;
+        if(Math.abs(dx)>5||Math.abs(dy)>5) moved=true;
+        let newLeft=startLeft+dx;
+        let newTop=startTop+dy;
+        const maxLeft=window.innerWidth-btn.offsetWidth;
+        const maxTop=window.innerHeight-btn.offsetHeight;
+        newLeft=Math.max(0,Math.min(newLeft,maxLeft));
+        newTop=Math.max(0,Math.min(newTop,maxTop));
+        btn.style.left=newLeft+"px";
+        btn.style.top=newTop+"px";
+        btn.style.right="auto";
+        btn.style.bottom="auto";
+        e.preventDefault();
     }
-    function onEnd(){
+    function onEnd(e){
         if(!isDragging) return;
-        isDragging = false;
+        isDragging=false;
         btn.classList.remove("dragging");
-        if(hasMoved){
-            const rect = btn.getBoundingClientRect();
-            localStorage.setItem("cart_float_pos_cn", JSON.stringify({x:rect.left, y:rect.top}));
+        if(moved){
+            const rect=btn.getBoundingClientRect();
+            localStorage.setItem("cart_float_pos",JSON.stringify({left:rect.left,top:rect.top}));
         }else{
             openCartModal();
         }
     }
-
-    btn.addEventListener("mousedown", onStart);
-    btn.addEventListener("touchstart", onStart, {passive:false});
-    document.addEventListener("mousemove", onMove);
-    document.addEventListener("touchmove", onMove, {passive:false});
-    document.addEventListener("mouseup", onEnd);
-    document.addEventListener("touchend", onEnd);
-
-    window.addEventListener("resize", function(){
-        const rect = btn.getBoundingClientRect();
-        let x = rect.left, y = rect.top;
-        x = Math.max(4, Math.min(window.innerWidth - BTN_SIZE - 4, x));
-        y = Math.max(4, Math.min(window.innerHeight - BTN_SIZE - 4, y));
-        btn.style.left = x + "px";
-        btn.style.top = y + "px";
-    });
+    btn.addEventListener("mousedown",onStart);
+    document.addEventListener("mousemove",onMove);
+    document.addEventListener("mouseup",onEnd);
+    btn.addEventListener("touchstart",onStart,{passive:false});
+    document.addEventListener("touchmove",onMove,{passive:false});
+    document.addEventListener("touchend",onEnd);
 })();
-
+/* 初始化 */
+renderBulletin();
 renderCats();
 renderGoods();
-renderBulletin();
+refreshCartBadge();
 </script>
 </body>
 </html>
