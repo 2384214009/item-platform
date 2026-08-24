@@ -360,8 +360,7 @@
         <div class="panel" id="addGoods">
             <h3>添加 / 编辑物品</h3>
             <input placeholder="物品名称" id="gName">
-            <input placeholder="编号（如 No.23）" id="gCode">
-            <input placeholder="价格（数字）" id="gPrice">
+            <input placeholder="编号（数字）" id="gPrice">
             <select id="gCat"></select>
             <textarea placeholder="物品简介描述" id="gDesc"></textarea>
             <input type="file" accept="image/*" id="imgUpload">
@@ -547,27 +546,24 @@
         }
         function saveGoods(){
             const name=document.getElementById("gName").value.trim();
-            const code=document.getElementById("gCode").value.trim();
             const price=document.getElementById("gPrice").value.trim();
             const catId=document.getElementById("gCat").value;
             const desc=document.getElementById("gDesc").value.trim();
             const imgSrc=document.getElementById("imgPreview").src;
             const sellout=document.getElementById("isSelloutEdit").checked;
-            if(!name||!price||!imgSrc||!catId){alert("名称、价格、分类、图片不能为空");return;}
-            const priceNum=parseFloat(price);
-            if(isNaN(priceNum)||priceNum<=0){alert("价格必须是大于0的数字");return;}
+            if(!name||!price||!imgSrc||!catId){alert("名称、编号、分类、图片不能为空");return;}
             const db=getDb();
             if(editTargetId){
                 const idx=db.goods.findIndex(x=>x.id===editTargetId);
-                if(idx>=0){db.goods[idx]={id:editTargetId,name,code,price:priceNum,catId,desc,img:imgSrc,sellout:sellout};}
+                if(idx>=0){db.goods[idx]={id:editTargetId,name,price,catId,desc,img:imgSrc,sellout:sellout};}
                 editTargetId=null;
             }else{
-                db.goods.push({id:Date.now(),name,code,price:priceNum,catId,desc,img:imgSrc,sellout:sellout});
+                db.goods.push({id:Date.now(),name,price,catId,desc,img:imgSrc,sellout:sellout});
             }
             saveDb(db);alert("保存成功");
-            document.getElementById("gName").value="";document.getElementById("gCode").value="";document.getElementById("gPrice").value="";document.getElementById("gCat").value="";
+            document.getElementById("gName").value="";document.getElementById("gPrice").value="";document.getElementById("gCat").value="";
             document.getElementById("gDesc").value="";document.getElementById("isSelloutEdit").checked=false;
-            document.getElementById("imgPreview").style.display="none";document.getElementById("imgPreview").src="";document.getElementById("imgUpload").value="";
+            document.getElementById("imgPreview").style.display="none";document.getElementById("imgUpload").value="";
             renderGoods();
         }
         function renderGoods(){
@@ -597,7 +593,7 @@
         window.editItem=function(id){
             const db=getDb();const g=db.goods.find(x=>x.id===id);
             editTargetId=id;
-            document.getElementById("gName").value=g.name;document.getElementById("gCode").value=g.code||"";document.getElementById("gPrice").value=g.price;
+            document.getElementById("gName").value=g.name;document.getElementById("gPrice").value=g.price;
             document.getElementById("gCat").value=g.catId;document.getElementById("gDesc").value=g.desc;
             document.getElementById("isSelloutEdit").checked=!!g.sellout;
             document.getElementById("imgPreview").src=g.img;document.getElementById("imgPreview").style.display="block";
