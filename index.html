@@ -157,10 +157,23 @@ if(!deviceId){
 function getDb(){
     const raw = localStorage.getItem("shop_db");
     return raw ? JSON.parse(raw) : {
-        goods:[],orders:[],categories:[],
+        goods:[
+            {id:1,catId:"aixi",name:"爱喜 酸奶",price:18,desc:"经典酸奶口味，清爽顺滑",img:"https://images.unsplash.com/photo-1488477181946-6428a0291777?w=400",sellout:false},
+            {id:2,catId:"aixi",name:"爱喜 香芋",price:18,desc:"浓郁香芋风味，绵密细腻",img:"https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=400",sellout:false},
+            {id:3,catId:"aixi",name:"爱喜 茉莉",price:20,desc:"清新茉莉花香，回味悠长",img:"https://images.unsplash.com/photo-1564890369478-c89ca6d9cde9?w=400",sellout:false},
+            {id:4,catId:"alishan",name:"阿里山 天韵",price:25,desc:"阿里山经典系列，口感醇厚",img:"https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=400",sellout:false},
+            {id:5,catId:"alishan",name:"阿里山 芒果",price:22,desc:"热带芒果风味，果香四溢",img:"https://images.unsplash.com/photo-1553279768-865429fa0078?w=400",sellout:false},
+            {id:6,catId:"baile",name:"百乐 原味",price:15,desc:"百乐经典原味，简约之选",img:"https://images.unsplash.com/photo-1578913130218-2f66c2b3a1a0?w=400",sellout:false},
+        ],
+        orders:[],
+        categories:[
+            {id:"aixi",name:"爱喜"},
+            {id:"alishan",name:"阿里山"},
+            {id:"baile",name:"百乐"},
+        ],
         adminAccounts:[{username:"admin",pwd:"admin123"}],
         cart:[],
-        bulletins:[],
+        bulletins:[{id:1,content:"欢迎使用物品展示平台 | 本平台仅用于信息登记，不提供任何交易服务",enable:true}],
     };
 }
 function saveDb(db){
