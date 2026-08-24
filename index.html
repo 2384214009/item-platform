@@ -293,9 +293,8 @@ function renderGoods(){
   if(list.length===0){ wrap.innerHTML='<div class="empty"><div class="empty-icon">🔍</div><div class="empty-text">暂无相关物品</div></div>'; return; }
   list.forEach(function(item){
     var card=document.createElement('div'); card.className='goods-card';
-    var grad=getGrad(item.catId); var imgHtml='';
+    var grad=getGrad(item.catId); var imgHtml='<div class="goods-img '+grad+'">';
     if(item.sellout){ imgHtml+='<div class="sellout-tag">无库存</div>'; }
-    imgHtml+='<div class="goods-img '+grad+'">';
     imgHtml+='<img src="'+item.img+'" alt="'+item.name+'" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">';
     imgHtml+='<div class="fallback" style="display:none;">'+item.name+'</div></div>';
     var btnHtml=item.sellout?'<div class="goods-btn disabled">暂无库存</div>':'<div class="goods-btn active" onclick="event.stopPropagation();addToCart('+item.id+')">加入清单</div>';
