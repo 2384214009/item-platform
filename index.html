@@ -636,7 +636,7 @@ if(!deviceId){
 }
 function getDb(){
     const raw = localStorage.getItem("shop_db");
-    return raw ? JSON.parse(raw) : {
+    const defaultData = {
         goods:[
             {id:1,catId:"aixi",name:"酸奶",code:"No.23",price:18,desc:"经典酸奶口味，清爽顺滑，爱喜系列经典款",img:"https://images.unsplash.com/photo-1488477181946-6428a0291777?w=400",sellout:false},
             {id:2,catId:"aixi",name:"香芋",code:"No.23",price:18,desc:"浓郁香芋风味，绵密细腻，爱喜系列人气款",img:"https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=400",sellout:false},
@@ -653,8 +653,27 @@ function getDb(){
         ],
         adminAccounts:[{username:"2384214009",pwd:"13727733582q.",role:"super"},{username:"admin",pwd:"admin123",role:"normal"}],
         cart:[],
-        bulletins:[{id:1,content:"欢迎使用物品展示平台 | 本平台仅用于信息登记，不提供任何交易服务",enable:true}],
+        bulletins:[{id:1,content:"欢迎使用物品展示平台 | 本平台仅用于信息登记，不提供任何交易服务",enable:true}]
     };
+    if(!raw){
+        localStorage.setItem("shop_db",JSON.stringify(defaultData));
+        return defaultData;
+    }
+    try{
+        const db=JSON.parse(raw);
+        let needSave=false;
+        if(!db.goods||db.goods.length===0){db.goods=defaultData.goods;needSave=true;}
+        if(!db.categories||db.categories.length===0){db.categories=defaultData.categories;needSave=true;}
+        if(!db.orders) db.orders=[];
+        if(!db.cart) db.cart=[];
+        if(!db.bulletins||db.bulletins.length===0){db.bulletins=defaultData.bulletins;needSave=true;}
+        if(!db.adminAccounts||db.adminAccounts.length===0){db.adminAccounts=defaultData.adminAccounts;needSave=true;}
+        if(needSave) localStorage.setItem("shop_db",JSON.stringify(db));
+        return db;
+    }catch(e){
+        localStorage.setItem("shop_db",JSON.stringify(defaultData));
+        return defaultData;
+    }
 }
 function saveDb(db){localStorage.setItem("shop_db",JSON.stringify(db));}
 function renderBulletin(){
