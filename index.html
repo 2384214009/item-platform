@@ -33,10 +33,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hira
 .goods-img-wrap{width:100%;height:160px;overflow:hidden;display:flex;align-items:center;justify-content:center;position:relative;}
 .goods-img-wrap img{width:100%;height:100%;object-fit:cover;display:block;position:absolute;top:0;left:0;}
 .goods-img-placeholder{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:48px;font-weight:700;text-shadow:0 2px 8px rgba(0,0,0,0.2);}
-.grad-aixi{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);}
-.grad-alishan{background:linear-gradient(135deg,#f093fb 0%,#f5576c 100%);}
-.grad-baile{background:linear-gradient(135deg,#4facfe 0%,#00f2fe 100%);}
-.grad-default{background:linear-gradient(135deg,#a8edea 0%,#fed6e3 100%);}
+.grad-aixi{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%) !important;}
+.grad-alishan{background:linear-gradient(135deg,#f093fb 0%,#f5576c 100%) !important;}
+.grad-baile{background:linear-gradient(135deg,#4facfe 0%,#00f2fe 100%) !important;}
+.grad-default{background:linear-gradient(135deg,#a8edea 0%,#fed6e3 100%) !important;}
 .goods-info{padding:12px;}
 .goods-name{font-size:15px;font-weight:600;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .goods-code{font-size:11px;color:var(--text-secondary);margin-bottom:6px;}
@@ -110,7 +110,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hira
 .order-count{font-size:12px;color:var(--text-secondary);}
 .order-card-right{display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;flex-shrink:0;}
 .order-imgs{display:flex;}
-.order-img-wrap{width:44px;height:44px;border-radius:8px;overflow:hidden;margin-left:-8px;border:2px solid var(--card);background:#f0f0f0;}
+.order-img-wrap{width:44px;height:44px;border-radius:8px;overflow:hidden;margin-left:-8px;border:2px solid var(--card);background:#f0f0f0;position:relative;}
 .order-img-wrap:first-child{margin-left:0;}
 .order-img-wrap img{width:100%;height:100%;object-fit:cover;}
 .order-total{font-size:16px;font-weight:700;color:var(--primary);}
@@ -130,7 +130,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hira
 .mr-detail-card-title{font-size:14px;font-weight:600;margin-bottom:12px;color:var(--text);}
 .mr-detail-item{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);}
 .mr-detail-item:last-child{border-bottom:none;}
-.mr-detail-item-img{width:56px;height:56px;border-radius:8px;overflow:hidden;background:#f0f0f0;flex-shrink:0;}
+.mr-detail-item-img{width:56px;height:56px;border-radius:8px;overflow:hidden;background:#f0f0f0;flex-shrink:0;position:relative;}
 .mr-detail-item-img img{width:100%;height:100%;object-fit:cover;}
 .mr-detail-item-info{flex:1;min-width:0;}
 .mr-detail-item-name{font-size:14px;font-weight:500;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -154,7 +154,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hira
 .form-textarea:focus{border-color:var(--primary);}
 .cart-item{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);align-items:center;}
 .cart-item:last-child{border-bottom:none;}
-.cart-item-img{width:50px;height:50px;border-radius:8px;overflow:hidden;background:#f0f0f0;flex-shrink:0;}
+.cart-item-img{width:50px;height:50px;border-radius:8px;overflow:hidden;background:#f0f0f0;flex-shrink:0;position:relative;}
 .cart-item-img img{width:100%;height:100%;object-fit:cover;}
 .cart-item-info{flex:1;min-width:0;}
 .cart-item-name{font-size:14px;font-weight:500;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -585,11 +585,9 @@ function renderCartModal() {
     var sub = item.price * item.qty;
     total += sub;
     var gradClass = getGradClass(item.catId || getCatIdByName(item.name));
-    var imgContent = '';
-    if (item.img) {
-      imgContent = '<img src="' + item.img + '" alt="' + item.name + '" style="width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;" onerror="this.style.display=\'none\';this.parentNode.querySelector(\'.cart-fallback\').style.display=\'flex\'">';
-    }
-    imgContent += '<div class="cart-fallback" style="display:none;width:100%;height:100%;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:700;text-align:center;padding:4px;">' + item.name + '</div>';
+    var fallbackDisplay = item.img ? 'none' : 'flex';
+    var imgTag = item.img ? '<img src="' + item.img + '" alt="' + item.name + '" style="width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;" onerror="this.style.display=\'none\';this.parentNode.querySelector(\'.cart-fallback\').style.display=\'flex\'">' : '';
+    var imgContent = imgTag + '<div class="cart-fallback" style="display:' + fallbackDisplay + ';width:100%;height:100%;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:700;text-align:center;padding:4px;">' + item.name + '</div>';
     html += '<div class="cart-item">' +
       '<div class="cart-item-img ' + gradClass + '">' + imgContent + '</div>' +
       '<div class="cart-item-info">' +
@@ -708,9 +706,11 @@ function renderMyRecordList() {
       var catId = getCatIdByName(it.goodsName);
       var gradClass = getGradClass(catId);
       var img = it.img || getGoodsImgByName(it.goodsName);
+      var fallbackDisplay = img ? 'none' : 'flex';
+      var imgTag = img ? '<img src="' + img + '" alt="" style="width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;" onerror="this.style.display=\'none\';this.parentNode.querySelector(\'.order-fallback\').style.display=\'flex\'">' : '';
       imgsHtml += '<div class="order-img-wrap ' + gradClass + '">' +
-        (img ? '<img src="' + img + '" alt="" style="width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;" onerror="this.style.display=\'none\';this.parentNode.querySelector(\'.order-fallback\').style.display=\'flex\'">' : '') +
-        '<div class="order-fallback" style="display:none;width:100%;height:100%;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700;text-align:center;padding:2px;">' + it.goodsName + '</div>' +
+        imgTag +
+        '<div class="order-fallback" style="display:' + fallbackDisplay + ';width:100%;height:100%;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700;text-align:center;padding:2px;">' + it.goodsName + '</div>' +
       '</div>';
     });
     html += '<div class="order-card" onclick="showMrDetail(\'' + order.orderNo + '\')">' +
@@ -746,11 +746,9 @@ function showMrDetail(orderNo) {
     var catId = getCatIdByName(it.goodsName);
     var gradClass = getGradClass(catId);
     var img = it.img || getGoodsImgByName(it.goodsName);
-    var imgContent = '';
-    if (img) {
-      imgContent = '<img src="' + img + '" alt="" style="width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;" onerror="this.style.display=\'none\';this.parentNode.querySelector(\'.mr-fallback\').style.display=\'flex\'">';
-    }
-    imgContent += '<div class="mr-fallback" style="display:none;width:100%;height:100%;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:700;text-align:center;padding:4px;">' + it.goodsName + '</div>';
+    var fallbackDisplay = img ? 'none' : 'flex';
+    var imgTag = img ? '<img src="' + img + '" alt="" style="width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;" onerror="this.style.display=\'none\';this.parentNode.querySelector(\'.mr-fallback\').style.display=\'flex\'">' : '';
+    var imgContent = imgTag + '<div class="mr-fallback" style="display:' + fallbackDisplay + ';width:100%;height:100%;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:700;text-align:center;padding:4px;">' + it.goodsName + '</div>';
     itemsHtml += '<div class="mr-detail-item">' +
       '<div class="mr-detail-item-img ' + gradClass + '">' + imgContent + '</div>' +
       '<div class="mr-detail-item-info">' +
