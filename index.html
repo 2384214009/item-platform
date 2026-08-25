@@ -524,7 +524,23 @@ function openReport(){ document.getElementById('reportMask').classList.add('show
 function closeReport(){ document.getElementById('reportMask').classList.remove('show'); selectedReportType=null; var types=document.querySelectorAll('.report-type'); types.forEach(function(t){t.classList.remove('active');}); document.getElementById('reportContent').value=''; }
 function selectReportType(el,type){ selectedReportType=type; var types=document.querySelectorAll('.report-type'); types.forEach(function(t){t.classList.remove('active');}); el.classList.add('active'); }
 function submitReport(){ if(!selectedReportType){ showToast('请选择举报类型'); return; } var reportType=selectedReportType; var content=document.getElementById('reportContent').value.trim(); var db=getDb(); var now=new Date(); var timeStr=now.getFullYear()+'/'+(now.getMonth()+1)+'/'+now.getDate()+' '+now.getHours()+':'+(now.getMinutes()<10?'0':'')+now.getMinutes(); var reportId='rpt_'+Date.now(); var report={id:reportId,deviceId:deviceId,type:reportType,content:content,time:timeStr,status:'pending'}; db.reports.unshift(report); saveDb(db); closeReport(); showToast('举报已提交，感谢您的反馈'); if(SUPABASE_ENABLED){ var cloudReport={id:reportId,device_id:deviceId,type:reportType,content:content,time:timeStr,status:'pending'}; insertReportToSupabase(cloudReport).catch(function(e){ console.warn('Supabase举报同步失败:',e); }); } }
-function checkBanned(){ var db=getDb(); var banned=db.bannedDevices.find(function(d){return d.deviceId===deviceId;}); if(banned){ showBannedPage(banned); return true; } if(SUPABASE_ENABLED){ fetchBannedFromSupabase().then(function(list){ var found=list.find(function(d){return d.device_id===deviceId;}); if(found){ showBannedPage({deviceId:found.device_id,reason:found.reason,time:found.time}); } }).catch(function(e){ console.warn('Supabase封禁检查失败:',e); }); } return false; }
+function checkBanned(){ 
+  var db=getDb(); 
+  var localBanned=db.bannedDevices.find(function(d){return d.deviceId===deviceId;}); 
+  if(SUPABASE_ENABLED){ 
+    fetchBannedFromSupabase().then(function(list){ 
+      var found=list.find(function(d){return d.device_id===deviceId;}); 
+      if(found){ 
+        showBannedPage({deviceId:found.device_id,reason:found.reason,time:found.time});
+        if(!localBanned){ db.bannedDevices.push({deviceId:found.device_id,reason:found.reason,time:found.time}); saveDb(db); }
+      } else { 
+        if(localBanned){ db.bannedDevices=db.bannedDevices.filter(function(d){return d.deviceId!==deviceId;}); saveDb(db); }
+        var page=document.getElementById('bannedPage'); if(page) page.classList.remove('show');
+      } 
+    }).catch(function(e){ console.warn('Supabase封禁检查失败:',e); if(localBanned) showBannedPage(localBanned); }); 
+  } else { if(localBanned){ showBannedPage(localBanned); return true; } }
+  return false; 
+}
 function showBannedPage(banned){ var page=document.getElementById('bannedPage'); page.classList.add('show'); if(banned&&banned.time){ document.getElementById('bannedTime').innerText=banned.time; } else { var now=new Date(); document.getElementById('bannedTime').innerText=now.getFullYear()+'/'+(now.getMonth()+1)+'/'+now.getDate(); } }
 init();
 </script>
