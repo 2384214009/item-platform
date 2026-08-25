@@ -208,8 +208,8 @@ function idbSave(key,val){imageCache[key]=val;if(idbDb){try{var tx=idbDb.transac
 function idbDelete(key){delete imageCache[key];if(idbDb){try{var tx=idbDb.transaction('images','readwrite');tx.objectStore('images').delete(key);}catch(e){}}}
 initIDB();
 // ===== Supabase配置（跨设备同步举报数据）=====
-var SUPABASE_URL='';
-var SUPABASE_ANON_KEY='';
+var SUPABASE_URL='https://sfozgzaopzvxrsxbfyla.supabase.co';
+var SUPABASE_ANON_KEY='sb_publishable_H9gYwPXXuKQVpH6Q8XCnRw_yZ1dyaPp';
 var SUPABASE_ENABLED = SUPABASE_URL && SUPABASE_ANON_KEY;
 function supabaseRequest(table, method, body, query){
   if(!SUPABASE_ENABLED) return Promise.reject(new Error('Supabase未配置'));

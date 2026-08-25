@@ -301,8 +301,8 @@ var DEFAULT = {
 var dbRawCache=null;
 // ===== Supabase配置（跨设备同步举报数据）=====
 // 使用方法：在 https://supabase.com 注册免费账号，创建项目，把下面两个值替换成你自己的
-var SUPABASE_URL=''; // 例如：https://xxxxxx.supabase.co
-var SUPABASE_ANON_KEY=''; // 你的anon public key
+var SUPABASE_URL='https://sfozgzaopzvxrsxbfyla.supabase.co'; // 例如：https://xxxxxx.supabase.co
+var SUPABASE_ANON_KEY='sb_publishable_H9gYwPXXuKQVpH6Q8XCnRw_yZ1dyaPp'; // 你的anon public key
 var SUPABASE_ENABLED = SUPABASE_URL && SUPABASE_ANON_KEY;
 function supabaseRequest(table, method, body, query){
   if(!SUPABASE_ENABLED) return Promise.reject(new Error('Supabase未配置'));
