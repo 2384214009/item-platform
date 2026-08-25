@@ -267,10 +267,11 @@ function getDb(){
     if(!Array.isArray(db.adminAccounts) || db.adminAccounts.length === 0){ db.adminAccounts = JSON.parse(JSON.stringify(DEFAULT.adminAccounts)); changed = true; }
     if(changed) localStorage.setItem('shop_db', JSON.stringify(db));
     db.goods.forEach(function(g){if(g.img&&g.img.indexOf('idb://')===0){var key=g.img.substring(6);g.img=imageCache[key]||'';}});
+    if(Array.isArray(db.orders)){db.orders.forEach(function(o){if(Array.isArray(o.items)){o.items.forEach(function(it){if(it.img&&it.img.indexOf('idb://')===0){var key=it.img.substring(6);it.img=imageCache[key]||'';}});}});}
     return db;
   }catch(e){ localStorage.setItem('shop_db', JSON.stringify(DEFAULT)); return JSON.parse(JSON.stringify(DEFAULT)); }
 }
-function saveDb(db){ try{ var dbCopy=JSON.parse(JSON.stringify(db)); dbCopy.goods.forEach(function(g){if(g.img&&g.img.indexOf('data:image')===0){var key='img_'+g.id;idbSave(key,g.img);g.img='idb://'+key;}}); var str=JSON.stringify(dbCopy); localStorage.setItem('shop_db', str); dbRawCache=str; }catch(e){ if(e.name==='QuotaExceededError'||e.code===22){ showToast('存储空间不足，请在管理后台删除部分旧物品或订单后重试'); }else{ showToast('保存失败'); } throw e; } }
+function saveDb(db){ try{ var dbCopy=JSON.parse(JSON.stringify(db)); dbCopy.goods.forEach(function(g){if(g.img&&g.img.indexOf('data:image')===0){var key='img_'+g.id;idbSave(key,g.img);g.img='idb://'+key;}}); if(Array.isArray(dbCopy.orders)){dbCopy.orders.forEach(function(o){if(Array.isArray(o.items)){o.items.forEach(function(it){if(it.img&&it.img.indexOf('data:image')===0){var key='order_img_'+(it.goodsName||'item');idbSave(key,it.img);it.img='idb://'+key;}});}});} var str=JSON.stringify(dbCopy); localStorage.setItem('shop_db', str); dbRawCache=str; }catch(e){ if(e.name==='QuotaExceededError'||e.code===22){ showToast('存储空间不足，请在管理后台删除部分旧物品或订单后重试'); }else{ showToast('保存失败'); } throw e; } }
 function getGrad(catId){ if(catId==='aixi')return'grad-1'; if(catId==='alishan')return'grad-2'; if(catId==='baile')return'grad-3'; return'grad-0'; }
 function getCatName(catId){ var db=getDb(); var c=db.categories.find(function(x){return x.id===catId;}); return c?c.name:''; }
 function getGoodsById(id){ var db=getDb(); return db.goods.find(function(g){return g.id==id;}); }
