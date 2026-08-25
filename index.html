@@ -308,8 +308,23 @@ function supabaseRequest(table, method, body, query){
   if(!SUPABASE_ENABLED) return Promise.reject(new Error('Supabase未配置'));
   var url=SUPABASE_URL+'/rest/v1/'+table;
   if(query) url+='?'+query;
-  var headers={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json','Prefer':'return=representation'};
-  return fetch(url,{method:method,headers:headers,body:body?JSON.stringify(body):undefined}).then(function(r){if(!r.ok){return r.text().then(function(t){throw new Error('Supabase请求失败:'+r.status+' '+t);});}return r.json();});
+  return new Promise(function(resolve,reject){
+    var xhr=new XMLHttpRequest();
+    xhr.open(method,url,true);
+    xhr.setRequestHeader('apikey',SUPABASE_ANON_KEY);
+    xhr.setRequestHeader('Authorization','Bearer '+SUPABASE_ANON_KEY);
+    xhr.setRequestHeader('Content-Type','application/json');
+    xhr.setRequestHeader('Prefer','return=representation');
+    xhr.onload=function(){
+      if(xhr.status>=200&&xhr.status<300){
+        try{resolve(JSON.parse(xhr.responseText));}catch(e){resolve(xhr.responseText);}
+      }else{
+        reject(new Error('Supabase请求失败:'+xhr.status+' '+xhr.responseText));
+      }
+    };
+    xhr.onerror=function(){reject(new Error('Supabase网络错误'));};
+    xhr.send(body?JSON.stringify(body):null);
+  });
 }
 function fetchReportsFromSupabase(){ return supabaseRequest('reports','GET',null,'select=*&order=time.desc'); }
 function fetchBannedFromSupabase(){ return supabaseRequest('banned_devices','GET',null,'select=*'); }
