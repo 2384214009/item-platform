@@ -348,8 +348,8 @@ function getDb(){
     if(!Array.isArray(db.reports)){ db.reports = []; changed = true; }
     if(!Array.isArray(db.bannedDevices)){ db.bannedDevices = []; changed = true; }
     if(changed) localStorage.setItem('shop_db', JSON.stringify(db));
-    db.goods.forEach(function(g){if(g.img&&g.img.indexOf('idb://')===0){var key=g.img.substring(6);g.img=imageCache[key]||'';}});
-    if(Array.isArray(db.orders)){db.orders.forEach(function(o){if(Array.isArray(o.items)){o.items.forEach(function(it){if(it.img&&it.img.indexOf('idb://')===0){var key=it.img.substring(6);it.img=imageCache[key]||'';}});}});}
+    db.goods.forEach(function(g){if(g.img&&g.img.indexOf('idb://')===0){var key=g.img.substring(6);g.img=imageCache[key]||('https://picsum.photos/seed/goods_'+g.id+'/400/400');}});
+    if(Array.isArray(db.orders)){db.orders.forEach(function(o){if(Array.isArray(o.items)){o.items.forEach(function(it){if(it.img&&it.img.indexOf('idb://')===0){var key=it.img.substring(6);it.img=imageCache[key]||('https://picsum.photos/seed/order_'+(it.goodsName||'item')+'/400/400');}});}});}
     return db;
   }catch(e){ localStorage.setItem('shop_db', JSON.stringify(DEFAULT)); return JSON.parse(JSON.stringify(DEFAULT)); }
 }
@@ -367,7 +367,7 @@ function renderBarrage(){
   var closed=sessionStorage.getItem('barrage_closed'); var list=db.bulletins.filter(function(b){return b.enable===true;});
   if(list.length===0 || closed==='1'){ wrap.style.display='none'; return; }
   wrap.style.display='flex'; var text=list.map(function(b){return b.content;}).join('   |   ');
-  scroll.innerText=text+'            '+text;
+  scroll.innerText=text;
 }
 function closeBarrage(){ sessionStorage.setItem('barrage_closed','1'); document.getElementById('barrage').style.display='none'; }
 function renderCats(){
