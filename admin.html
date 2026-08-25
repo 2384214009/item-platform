@@ -284,7 +284,21 @@ function renderBannedDevices(){var wrap=document.getElementById('bannedList');if
 function banDevice(deviceId,reportId){try{var db=getDb();if(!db.bannedDevices)db.bannedDevices=[];if(!db.reports)db.reports=[];if(db.bannedDevices.find(function(d){return d.deviceId===deviceId;})){showToast('该设备已在封禁列表中');return;}var now=new Date();var timeStr=now.getFullYear()+'/'+(now.getMonth()+1)+'/'+now.getDate()+' '+now.getHours()+':'+(now.getMinutes()<10?'0':'')+now.getMinutes();db.bannedDevices.push({deviceId:deviceId,time:timeStr,reason:'举报违规'});if(reportId){var r=db.reports.find(function(x){return x.id===reportId;});if(r)r.status='done';}saveDb(db);renderReports();renderBannedDevices();showToast('设备已封禁');if(SUPABASE_ENABLED){insertBannedToSupabase({device_id:deviceId,time:timeStr,reason:'举报违规'}).catch(function(e){console.warn('Supabase封禁同步失败:',e);});if(reportId){updateReportStatus(reportId,'done').catch(function(e){console.warn('Supabase举报状态更新失败:',e);});}}}catch(e){showToast('封禁失败：'+e.message);}}
 function unbanDevice(deviceId){try{var db=getDb();if(!db.bannedDevices)db.bannedDevices=[];db.bannedDevices=db.bannedDevices.filter(function(d){return d.deviceId!==deviceId;});saveDb(db);renderReports();renderBannedDevices();showToast('已解除封禁');if(SUPABASE_ENABLED){deleteBannedFromSupabase(deviceId).catch(function(e){console.warn('Supabase解除封禁同步失败:',e);});}}catch(e){showToast('解除失败：'+e.message);}}
 function markReportDone(reportId){var db=getDb();var r=db.reports.find(function(x){return x.id===reportId;});if(r){r.status='done';saveDb(db);renderReports();showToast('已标记为已处理');if(SUPABASE_ENABLED){updateReportStatus(reportId,'done').catch(function(e){console.warn('Supabase举报状态更新失败:',e);});}}}
-function deleteReport(reportId){try{var db=getDb();if(db.reports){db.reports=db.reports.filter(function(r){return r.id!==reportId;});saveDb(db);}renderReports();showToast('举报记录已删除');if(SUPABASE_ENABLED){deleteReportFromSupabase(reportId).catch(function(e){console.warn('Supabase删除举报失败:',e);});}}catch(e){showToast('删除失败：'+e.message);}}
+function deleteReport(reportId){
+  try{
+    showToast('正在删除...');
+    var db=getDb();
+    if(db.reports){ db.reports=db.reports.filter(function(r){return r.id!==reportId;}); saveDb(db); }
+    if(SUPABASE_ENABLED){
+      deleteReportFromSupabase(reportId).then(function(){
+        renderReports(); showToast('举报记录已删除');
+      }).catch(function(e){
+        console.warn('Supabase删除举报失败:',e);
+        renderReports(); showToast('举报记录已删除');
+      });
+    }else{ renderReports(); showToast('举报记录已删除'); }
+  }catch(e){ showToast('删除失败：'+e.message); }
+}
 
 </script>
 </body>
