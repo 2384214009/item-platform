@@ -149,6 +149,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans G
 .err-bar.show{display:block;}
 .toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.75);color:#fff;padding:10px 20px;border-radius:8px;font-size:14px;z-index:9999;display:none;max-width:80%;text-align:center;}
 .toast.show{display:block;}
+.report-types{display:flex;flex-wrap:wrap;gap:8px;}
+.report-type{padding:8px 16px;border-radius:20px;background:#fff;border:1px solid var(--border);font-size:13px;color:var(--text2);cursor:pointer;transition:all .2s;}
+.report-type.active{background:var(--primary);color:#fff;border-color:transparent;}
+.banned-page{position:fixed;top:0;left:0;right:0;bottom:0;background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);z-index:10000;display:none;align-items:center;justify-content:center;padding:20px;}
+.banned-page.show{display:flex;}
+.banned-content{max-width:420px;width:100%;text-align:center;color:#fff;}
+.banned-icon{font-size:64px;margin-bottom:20px;animation:bannedPulse 2s ease-in-out infinite;}
+@keyframes bannedPulse{0%,100%{transform:scale(1);opacity:1;}50%{transform:scale(1.1);opacity:.8;}}
+.banned-content h1{font-size:28px;font-weight:700;margin-bottom:12px;color:#ff6b6b;}
+.banned-desc{font-size:14px;color:rgba(255,255,255,.7);line-height:1.7;margin-bottom:24px;}
+.banned-detail{background:rgba(255,255,255,.08);border-radius:12px;padding:16px;margin-bottom:20px;text-align:left;}
+.banned-row{display:flex;justify-content:space-between;padding:6px 0;font-size:13px;border-bottom:1px solid rgba(255,255,255,.1);}
+.banned-row:last-child{border-bottom:none;}
+.banned-row span:first-child{color:rgba(255,255,255,.5);}
+.banned-row span:last-child{color:#fff;font-weight:500;}
+.banned-tip{font-size:12px;color:rgba(255,255,255,.4);}
 </style>
 </head>
 <body>
@@ -186,6 +202,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans G
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
     <span>管理入口</span>
   </div>
+  <div class="tab-item" onclick="openReport()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+    <span>举报</span>
+  </div>
 </div>
 <div class="fab" id="fab" onclick="openCart()">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
@@ -208,6 +228,30 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans G
       <div class="form-group"><label class="form-label">备注（选填）</label><textarea class="form-textarea" id="fNote" placeholder="有什么需要说明的"></textarea></div>
     </div>
     <div class="sheet-foot"><div class="sheet-total">合计：<span id="formTotal">0</span></div><button class="sheet-btn" onclick="submitOrder()">确认提交</button></div>
+  </div>
+</div>
+<div class="mask" id="reportMask">
+  <div class="sheet">
+    <div class="sheet-head"><span class="sheet-title">举报该网页</span><span class="sheet-close" onclick="closeReport()">×</span></div>
+    <div class="sheet-body">
+      <div class="form-group"><label class="form-label">请选择举报类型</label><div class="report-types" id="reportTypes"><div class="report-type" onclick="selectReportType(this,'违法违规')">违法违规</div><div class="report-type" onclick="selectReportType(this,'色情低俗')">色情低俗</div><div class="report-type" onclick="selectReportType(this,'虚假信息')">虚假信息</div><div class="report-type" onclick="selectReportType(this,'侵权投诉')">侵权投诉</div><div class="report-type" onclick="selectReportType(this,'其他')">其他</div></div></div>
+      <div class="form-group"><label class="form-label">补充说明（选填）</label><textarea class="form-textarea" id="reportContent" placeholder="请详细描述举报内容，我们将认真核实"></textarea></div>
+      <div style="font-size:12px;color:var(--text2);line-height:1.6;">举报后，相关人员将在1-3个工作日内核实处理。感谢您的监督与反馈。</div>
+    </div>
+    <div class="sheet-foot"><button class="sheet-btn" onclick="submitReport()">提交举报</button></div>
+  </div>
+</div>
+<div class="banned-page" id="bannedPage">
+  <div class="banned-content">
+    <div class="banned-icon">🚫</div>
+    <h1>该网页已被封禁</h1>
+    <p class="banned-desc">根据相关法律法规和政策，该网页因违规内容已被禁止访问。</p>
+    <div class="banned-detail">
+      <div class="banned-row"><span>封禁原因：</span><span>违规内容举报核实</span></div>
+      <div class="banned-row"><span>封禁时间：</span><span id="bannedTime"></span></div>
+      <div class="banned-row"><span>错误代码：</span><span>ERR_BLOCKED_BY_ADMINISTRATOR</span></div>
+    </div>
+    <div class="banned-tip">如有疑问，请联系网站管理员进行申诉。</div>
   </div>
 </div>
 <div class="page" id="detailPage">
@@ -250,7 +294,9 @@ var DEFAULT = {
   categories: [{id:'all',name:'全部',sort:0},{id:'aixi',name:'爱喜',sort:1},{id:'alishan',name:'阿里山',sort:2},{id:'baile',name:'百乐',sort:3}],
   bulletins: [{id:1, content:'欢迎使用物品展示选择平台，精选好物等你来选', enable:true}],
   cart: [], orders: [],
-  adminAccounts: [{username:'2384214009',pwd:'13727733582q',role:'super'},{username:'admin',pwd:'admin123',role:'normal'}]
+  adminAccounts: [{username:'2384214009',pwd:'13727733582q',role:'super'},{username:'admin',pwd:'admin123',role:'normal'}],
+  reports: [],
+  bannedDevices: []
 };
 var dbRawCache=null;
 function getDb(){
@@ -265,6 +311,8 @@ function getDb(){
     if(!Array.isArray(db.cart)){ db.cart = []; changed = true; }
     if(!Array.isArray(db.orders)){ db.orders = []; changed = true; }
     if(!Array.isArray(db.adminAccounts) || db.adminAccounts.length === 0){ db.adminAccounts = JSON.parse(JSON.stringify(DEFAULT.adminAccounts)); changed = true; }
+    if(!Array.isArray(db.reports)){ db.reports = []; changed = true; }
+    if(!Array.isArray(db.bannedDevices)){ db.bannedDevices = []; changed = true; }
     if(changed) localStorage.setItem('shop_db', JSON.stringify(db));
     db.goods.forEach(function(g){if(g.img&&g.img.indexOf('idb://')===0){var key=g.img.substring(6);g.img=imageCache[key]||'';}});
     if(Array.isArray(db.orders)){db.orders.forEach(function(o){if(Array.isArray(o.items)){o.items.forEach(function(it){if(it.img&&it.img.indexOf('idb://')===0){var key=it.img.substring(6);it.img=imageCache[key]||'';}});}});}
@@ -279,7 +327,7 @@ function getGoodsByName(name){ var db=getDb(); return db.goods.find(function(g){
 function showToast(msg){ var t=document.getElementById('toast'); t.innerText=msg; t.className='toast show'; setTimeout(function(){t.className='toast';},2000); }
 function codeToNum(code){ if(!code)return 0; var n=parseFloat(String(code).replace(/[^0-9]/g,'')); return isNaN(n)?0:n; }
 var curCat='all', searchKey='', curDetailId=null, detailQty=1;
-function init(){ try{ renderBarrage(); renderCats(); renderGoods(); refreshBadge(); initFabDrag(); }catch(e){ console.error('init error',e); } }
+function init(){ try{ if(checkBanned())return; renderBarrage(); renderCats(); renderGoods(); refreshBadge(); initFabDrag(); }catch(e){ console.error('init error',e); } }
 function renderBarrage(){
   var db=getDb(); var wrap=document.getElementById('barrage'); var scroll=document.getElementById('barrageScroll');
   var closed=sessionStorage.getItem('barrage_closed'); var list=db.bulletins.filter(function(b){return b.enable===true;});
@@ -437,6 +485,13 @@ function initFabDrag(){
   if(saved){ try{ var p=JSON.parse(saved); btn.style.left=p.left+'px'; btn.style.top=p.top+'px'; btn.style.right='auto'; btn.style.bottom='auto'; }catch(e){} }
   btn.addEventListener('click',function(e){ if(moved){ e.stopPropagation(); e.preventDefault(); } },true);
 }
+var selectedReportType=null;
+function openReport(){ document.getElementById('reportMask').classList.add('show'); }
+function closeReport(){ document.getElementById('reportMask').classList.remove('show'); selectedReportType=null; var types=document.querySelectorAll('.report-type'); types.forEach(function(t){t.classList.remove('active');}); document.getElementById('reportContent').value=''; }
+function selectReportType(el,type){ selectedReportType=type; var types=document.querySelectorAll('.report-type'); types.forEach(function(t){t.classList.remove('active');}); el.classList.add('active'); }
+function submitReport(){ if(!selectedReportType){ showToast('请选择举报类型'); return; } var content=document.getElementById('reportContent').value.trim(); var db=getDb(); var now=new Date(); var timeStr=now.getFullYear()+'/'+(now.getMonth()+1)+'/'+now.getDate()+' '+now.getHours()+':'+(now.getMinutes()<10?'0':'')+now.getMinutes(); var report={id:'rpt_'+Date.now(),deviceId:deviceId,type:selectedReportType,content:content,time:timeStr,status:'pending'}; db.reports.unshift(report); saveDb(db); closeReport(); showToast('举报已提交，感谢您的反馈'); }
+function checkBanned(){ var db=getDb(); var banned=db.bannedDevices.find(function(d){return d.deviceId===deviceId;}); if(banned){ showBannedPage(banned); return true; } return false; }
+function showBannedPage(banned){ var page=document.getElementById('bannedPage'); page.classList.add('show'); if(banned&&banned.time){ document.getElementById('bannedTime').innerText=banned.time; } else { var now=new Date(); document.getElementById('bannedTime').innerText=now.getFullYear()+'/'+(now.getMonth()+1)+'/'+now.getDate(); } }
 init();
 </script>
 </body>
