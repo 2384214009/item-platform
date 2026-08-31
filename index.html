@@ -887,8 +887,9 @@ var Store = (function () {
    * 管理员账号/举报仍只存本机（各设备私有）。 */
   function cloudReq(path, opts) {
     opts = opts || {};
+    var timeoutMs = opts.timeout || 25000;
     var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
-    var timer = setTimeout(function () { if (ctrl) ctrl.abort(); }, 25000);
+    var timer = setTimeout(function () { if (ctrl) ctrl.abort(); }, timeoutMs);
     var init = { method: opts.method || 'GET', headers: { 'apikey': CLOUD_KEY, 'Authorization': 'Bearer ' + CLOUD_KEY, 'Content-Type': 'application/json' } };
     if (opts.prefer) init.headers['Prefer'] = opts.prefer;
     if (opts.body !== undefined) init.body = JSON.stringify(opts.body);
@@ -902,6 +903,25 @@ var Store = (function () {
         try { return JSON.parse(txt); } catch (e) { return null; }
       });
     }, function (e) { clearTimeout(timer); throw e; });
+  }
+  // 弱网/抖动自动重试：网络层错误(无HTTP码=断连/超时/中断)、408/409/413/429/5xx 可重试；
+  // 其余 4xx（如数据格式错误）重试无意义，立即抛出。退避 0.8s/1.6s/2.4s。
+  function cloudReqRetry(path, opts, retries) {
+    var maxRetry = (retries == null) ? 3 : retries;
+    var attempt = 0;
+    function delay(ms) { return new Promise(function (res) { setTimeout(res, ms); }); }
+    function once() {
+      return cloudReq(path, opts).catch(function (e) {
+        attempt++;
+        var msg = (e && e.message) ? e.message : '';
+        var m = /HTTP\s+(\d+)/.exec(msg);
+        var status = m ? Number(m[1]) : 0;
+        var retryable = !status || status === 408 || status === 409 || status === 413 || status === 429 || status >= 500;
+        if (attempt <= maxRetry && retryable) return delay(800 * attempt).then(once);
+        throw e;
+      });
+    }
+    return once();
   }
   // 取商品真实图片 dataURL：idb 指针→imgCache 取出；picsum 外链/空→空（不上云无效外链）
   function realImg(ref) {
@@ -922,9 +942,9 @@ var Store = (function () {
     if (cloudPulling) return Promise.resolve(null);
     cloudPulling = true;
     return Promise.all([
-      cloudReq('cloud_goods?select=*&order=sort.asc.nullslast'),
-      cloudReq('cloud_categories?select=*&order=sort.asc.nullslast'),
-      cloudReq('cloud_bulletins?select=*')
+      cloudReqRetry('cloud_goods?select=*&order=sort.asc.nullslast', { timeout: 40000 }, 2),
+      cloudReqRetry('cloud_categories?select=*&order=sort.asc.nullslast', { timeout: 40000 }, 2),
+      cloudReqRetry('cloud_bulletins?select=*', { timeout: 40000 }, 2)
     ]).then(function (res) {
       var gRows = res[0] || [], cRows = res[1] || [], bRows = res[2] || [];
       lastCloudPullAt = Date.now();
@@ -955,23 +975,56 @@ var Store = (function () {
     });
   }
   // ---- 管理员写云端（失败不阻断本机保存，返回 Promise 供界面提示/重试） ----
-  function cloudUpsertGoods(g) { return cloudReq('cloud_goods', { method: 'POST', prefer: 'resolution=merge-duplicates', body: goodsToRow(g) }); }
-  function cloudDeleteGoods(id) { return cloudReq('cloud_goods?id=eq.' + encodeURIComponent(id), { method: 'DELETE' }); }
-  function cloudUpsertCat(c) { return cloudReq('cloud_categories', { method: 'POST', prefer: 'resolution=merge-duplicates', body: { id: String(c.id), name: c.name, sort: c.sort || 0 } }); }
-  function cloudDeleteCat(id) { return cloudReq('cloud_categories?id=eq.' + encodeURIComponent(id), { method: 'DELETE' }); }
+  function cloudUpsertGoods(g) { return cloudReqRetry('cloud_goods', { method: 'POST', prefer: 'resolution=merge-duplicates', body: goodsToRow(g), timeout: 60000 }, 3); }
+  function cloudDeleteGoods(id) { return cloudReqRetry('cloud_goods?id=eq.' + encodeURIComponent(id), { method: 'DELETE', timeout: 60000 }, 3); }
+  function cloudUpsertCat(c) { return cloudReqRetry('cloud_categories', { method: 'POST', prefer: 'resolution=merge-duplicates', body: { id: String(c.id), name: c.name, sort: c.sort || 0 }, timeout: 60000 }, 3); }
+  function cloudDeleteCat(id) { return cloudReqRetry('cloud_categories?id=eq.' + encodeURIComponent(id), { method: 'DELETE', timeout: 60000 }, 3); }
   function bullIdToNum(id) { return Number(String(id).replace(/\D/g, '')) || Date.now(); }
-  function cloudUpsertBulletin(b) { return cloudReq('cloud_bulletins', { method: 'POST', prefer: 'resolution=merge-duplicates', body: { id: bullIdToNum(b.id), content: b.content, enable: b.enable !== false } }); }
-  function cloudDeleteBulletin(id) { return cloudReq('cloud_bulletins?id=eq.' + encodeURIComponent(bullIdToNum(id)), { method: 'DELETE' }); }
-  // 一键全量发布：本机全部商品/分类/公告整体 upsert 到云端（首次上云/批量更新用）
-  function cloudPublishAll() {
+  function cloudUpsertBulletin(b) { return cloudReqRetry('cloud_bulletins', { method: 'POST', prefer: 'resolution=merge-duplicates', body: { id: bullIdToNum(b.id), content: b.content, enable: b.enable !== false }, timeout: 60000 }, 3); }
+  function cloudDeleteBulletin(id) { return cloudReqRetry('cloud_bulletins?id=eq.' + encodeURIComponent(bullIdToNum(id)), { method: 'DELETE', timeout: 60000 }, 3); }
+  // 商品按累计 JSON 体积切批：国内网络直连 Supabase 海外节点时，整包(含全部 base64 图)越大越易被
+  // 中断/超时；切成每批 ≤400KB（通常 1~2 件带图商品）小包，弱网成功率显著提高。
+  function chunkGoodsRows(rows, maxBytes) {
+    var batches = [], cur = [], curSize = 0;
+    rows.forEach(function (r) {
+      var size = JSON.stringify(r).length;
+      if (cur.length && curSize + size > maxBytes) { batches.push(cur); cur = []; curSize = 0; }
+      cur.push(r); curSize += size;
+    });
+    if (cur.length) batches.push(cur);
+    return batches;
+  }
+  // 一键全量发布：先发分类/公告小包，再把商品分片【串行】上传，每片自动重试；
+  // onProgress({done,total}) 回调上传进度；个别片最终失败时汇总抛出，已成功片幂等不重复。
+  function cloudPublishAll(onProgress) {
     var goodsRows = memDb.goods.map(goodsToRow);
     var catRows = memDb.categories.filter(function (c) { return c.id !== 'all'; }).map(function (c) { return { id: String(c.id), name: c.name, sort: c.sort || 0 }; });
     var bullRows = memDb.bulletins.map(function (b) { return { id: bullIdToNum(b.id), content: b.content, enable: b.enable !== false }; });
-    var jobs = [];
-    if (goodsRows.length) jobs.push(cloudReq('cloud_goods', { method: 'POST', prefer: 'resolution=merge-duplicates', body: goodsRows }));
-    if (catRows.length) jobs.push(cloudReq('cloud_categories', { method: 'POST', prefer: 'resolution=merge-duplicates', body: catRows }));
-    if (bullRows.length) jobs.push(cloudReq('cloud_bulletins', { method: 'POST', prefer: 'resolution=merge-duplicates', body: bullRows }));
-    return Promise.all(jobs).then(function () { return { goods: goodsRows.length, cats: catRows.length, bulls: bullRows.length }; });
+    var metaJobs = [];
+    if (catRows.length) metaJobs.push(cloudReqRetry('cloud_categories', { method: 'POST', prefer: 'resolution=merge-duplicates', body: catRows, timeout: 60000 }, 3));
+    if (bullRows.length) metaJobs.push(cloudReqRetry('cloud_bulletins', { method: 'POST', prefer: 'resolution=merge-duplicates', body: bullRows, timeout: 60000 }, 3));
+    var failed = [];
+    function progress(done) { if (typeof onProgress === 'function') { try { onProgress({ done: done, total: goodsRows.length }); } catch (e) {} } }
+    return Promise.all(metaJobs).then(function () {
+      var batches = chunkGoodsRows(goodsRows, 400 * 1024);
+      var done = 0; progress(0);
+      return batches.reduce(function (chain, batch) {
+        return chain.then(function () {
+          return cloudReqRetry('cloud_goods', { method: 'POST', prefer: 'resolution=merge-duplicates', body: batch, timeout: 60000 }, 3)
+            .then(function () { done += batch.length; progress(done); })
+            .catch(function (e) {
+              batch.forEach(function (r) { failed.push({ id: r.id, name: r.name, err: (e && e.message) || '网络异常' }); });
+              done += batch.length; progress(done);
+            });
+        });
+      }, Promise.resolve());
+    }).then(function () {
+      if (failed.length) {
+        var f = failed[0];
+        throw new Error('有 ' + failed.length + ' 件物品未上传成功（如「' + f.name + '」' + (f.err ? '：' + f.err : '') + '）。请换到更稳定的网络（或切换 WiFi/手机热点）后再点一次发布，已成功的物品不会重复');
+      }
+      return { goods: goodsRows.length, cats: catRows.length, bulls: bullRows.length, batches: chunkGoodsRows(goodsRows, 400 * 1024).length };
+    });
   }
   function onCloudSync(fn) { cloudSyncWaiters.push(fn); }
 
