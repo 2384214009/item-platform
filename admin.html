@@ -133,6 +133,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans G
 .pwd-group{margin-bottom:14px;}
 .toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.75);color:#fff;padding:10px 20px;border-radius:8px;font-size:14px;z-index:9999;display:none;max-width:80%;text-align:center;}
 .toast.show{display:block;}
+.boot-loading{position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg);z-index:10000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;}
+.boot-spinner{width:38px;height:38px;border:3px solid var(--primary-light);border-top-color:var(--primary);border-radius:50%;animation:bootspin .8s linear infinite;}
+@keyframes bootspin{to{transform:rotate(360deg);}}
+.boot-loading p{font-size:13px;color:var(--text2);}
+.backup-btn{width:100%;padding:11px;border-radius:var(--radius-btn);border:none;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:10px;color:#fff;}
+.backup-btn.export{background:var(--primary-dark);}
+.backup-btn.import{background:#5b8ff9;}
+.backup-btn.snap{background:var(--success);}
 .empty{text-align:center;padding:40px 20px;}
 .empty-icon{font-size:36px;margin-bottom:10px;opacity:.5;}
 .empty-text{font-size:14px;color:var(--text2);}
@@ -143,6 +151,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans G
 </style>
 </head>
 <body>
+<div class="boot-loading" id="bootLoading"><div class="boot-spinner"></div><p>正在加载数据...</p></div>
 <div class="toast" id="toast"></div>
 <div class="login-page" id="loginPage">
   <div class="login-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
@@ -193,7 +202,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans G
     <div id="panel-goodsList" style="display:none;"><div class="goods-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="goodsSearch" placeholder="搜索物品名称..." oninput="renderGoodsList()"></div><div id="goodsListBody"></div></div>
     <div id="panel-records" style="display:none;"><div class="record-filters"><div class="record-filter active" onclick="filterRecords('all',this)">全部</div><div class="record-filter" onclick="filterRecords('pending',this)">待处理</div><div class="record-filter" onclick="filterRecords('done',this)">已处理</div></div><div id="recordsBody"></div></div>
     <div id="panel-bulletin" style="display:none;"><div class="panel"><div class="panel-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>新增公告</div><div class="form-group"><textarea class="form-input" id="newBulletin" placeholder="请输入公告内容" style="min-height:80px;resize:vertical;font-family:inherit;"></textarea></div><div class="check-row"><input type="checkbox" id="newBulletinEnable" checked><label for="newBulletinEnable">立即启用</label></div><button class="btn-primary" onclick="addBulletin()">发布公告</button></div><div class="panel"><div class="panel-title">公告列表</div><div id="bulletinList"></div></div></div>
-    <div id="panel-account" style="display:none;"><div class="panel"><div class="panel-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>修改密码</div><div class="pwd-group"><label class="form-label">原密码</label><input type="password" class="form-input" id="oldPwd" placeholder="请输入原密码"></div><div class="pwd-group"><label class="form-label">新密码</label><input type="password" class="form-input" id="newPwd" placeholder="请输入新密码（至少6位）"></div><div class="pwd-group"><label class="form-label">确认新密码</label><input type="password" class="form-input" id="confirmPwd" placeholder="请再次输入新密码"></div><button class="btn-primary" onclick="changePwd()">确认修改</button></div><div class="panel"><div class="panel-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>数据维护</div><div style="background:var(--bg);border-radius:var(--radius-sm);padding:12px;margin-bottom:12px;"><div style="font-size:13px;color:var(--text2);margin-bottom:6px;">当前存储空间使用</div><div id="storageUsage" style="font-size:18px;font-weight:700;color:var(--primary);">计算中...</div><div style="height:8px;background:#e0e0e0;border-radius:4px;margin-top:8px;overflow:hidden;"><div id="storageBar" style="height:100%;width:0%;background:var(--primary);border-radius:4px;transition:width .3s;"></div></div></div><button class="btn-primary" style="margin-bottom:10px;background:var(--primary);" onclick="compressAllImages()">🗜 一键压缩所有商品图片</button><button class="btn-primary" style="margin-bottom:10px;background:var(--warning);" onclick="clearDoneOrders()">🗑 清空所有已处理订单</button><div style="font-size:12px;color:var(--text2);line-height:1.6;margin-top:8px;">说明：压缩图片会重新处理所有商品大图，可释放大量空间；清空已处理订单只删除状态为"已处理"的订单记录，待处理订单不受影响。</div></div></div>
+    <div id="panel-account" style="display:none;"><div class="panel"><div class="panel-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>修改密码</div><div class="pwd-group"><label class="form-label">原密码</label><input type="password" class="form-input" id="oldPwd" placeholder="请输入原密码"></div><div class="pwd-group"><label class="form-label">新密码</label><input type="password" class="form-input" id="newPwd" placeholder="请输入新密码（至少6位）"></div><div class="pwd-group"><label class="form-label">确认新密码</label><input type="password" class="form-input" id="confirmPwd" placeholder="请再次输入新密码"></div><button class="btn-primary" onclick="changePwd()">确认修改</button></div><div class="panel"><div class="panel-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>数据维护</div><div style="background:var(--bg);border-radius:var(--radius-sm);padding:12px;margin-bottom:12px;"><div style="font-size:13px;color:var(--text2);margin-bottom:6px;">当前存储空间使用 <span id="storageMode" style="color:var(--text3);"></span></div><div id="storageUsage" style="font-size:15px;font-weight:700;color:var(--primary);line-height:1.7;">计算中...</div><div style="height:8px;background:#e0e0e0;border-radius:4px;margin-top:8px;overflow:hidden;"><div id="storageBar" style="height:100%;width:0%;background:var(--primary);border-radius:4px;transition:width .3s;"></div></div></div><button class="btn-primary" style="margin-bottom:10px;background:var(--primary);" onclick="compressAllImages()">🗜 一键压缩所有商品图片</button><button class="btn-primary" style="margin-bottom:10px;background:var(--warning);" onclick="clearDoneOrders()">🗑 清空所有已处理订单</button><button class="btn-primary" style="margin-bottom:10px;background:#8c7ae6;" onclick="cleanupImages()">🧹 清理无用图片（释放空间）</button><button class="backup-btn export" onclick="exportBackup()">💾 导出完整备份（含全部图片，推荐定期保存）</button><button class="backup-btn import" onclick="document.getElementById('backupFile').click()">📥 导入备份文件恢复</button><input type="file" accept="application/json,.json" id="backupFile" style="display:none;"><button class="backup-btn snap" onclick="restoreSnapshot()">♻ 从本机自动快照恢复</button><div style="font-size:12px;color:var(--text2);line-height:1.7;margin-top:8px;">说明：①图片独立存放在浏览器 IndexedDB 大空间数据库，不再占用普通存储，正常使用不会再丢图；②"导出完整备份"会生成一个包含全部物品和图片的文件，换手机/换浏览器/清理缓存后，用"导入备份"即可完整恢复，建议每次大批量上新后导出一份发给自己存档；③系统每约 1 分钟自动生成一份本机快照（最近 3 份），页面数据异常时可用"从本机自动快照恢复"；④清空已处理订单只删除"已处理"记录，待处理订单不受影响。</div></div></div>
     <div id="panel-reports" style="display:none;">
       <div class="panel"><div class="panel-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>举报记录</div><div id="reportsList"></div></div>
       <div class="panel"><div class="panel-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>已封禁设备</div><div id="bannedList"></div></div>
@@ -202,12 +211,516 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans G
   </div>
 </div>
 <script>
-var curUser='',curRole='normal',editGoodsId=null,recordFilter='all',hasUploadedImage=false,imageCache={},idbLoaded=false,idbDb=null;
-function initIDB(callback){try{var req=indexedDB.open('shop_images',1);req.onupgradeneeded=function(e){idbDb=e.target.result;if(!idbDb.objectStoreNames.contains('images')){idbDb.createObjectStore('images');}};req.onsuccess=function(e){idbDb=e.target.result;try{var tx=idbDb.transaction('images','readonly');var store=tx.objectStore('images');var keysReq=store.getAllKeys();keysReq.onsuccess=function(){var keys=keysReq.result;var loaded=0;if(keys.length===0){idbLoaded=true;if(callback)callback();return;}keys.forEach(function(key){var getReq=store.get(key);getReq.onsuccess=function(){imageCache[key]=getReq.result;loaded++;if(loaded>=keys.length){idbLoaded=true;if(callback)callback();}};});};}catch(e){idbLoaded=true;if(callback)callback();}};req.onerror=function(){idbLoaded=true;if(callback)callback();};}catch(e){idbLoaded=true;if(callback)callback();}}
-function idbSave(key,val){imageCache[key]=val;if(idbDb){try{var tx=idbDb.transaction('images','readwrite');tx.objectStore('images').put(val,key);}catch(e){}}}
-function idbDelete(key){delete imageCache[key];if(idbDb){try{var tx=idbDb.transaction('images','readwrite');tx.objectStore('images').delete(key);}catch(e){}}}
-initIDB();
-// ===== Supabase配置（跨设备同步举报数据）=====
+/*==== Store 统一存储层 ====*/
+/* ============================================================
+ * Store —— 统一存储层（重构核心，前后台共用同一份逻辑）
+ * 设计原则：
+ * 1. 图片唯一主存储为 IndexedDB；localStorage 内 goods.img 永远只存
+ *    "idb://key" 指针 / https外链 / 空串，任何读取路径都不再把指针
+ *    原地替换成 base64，从根上杜绝"读不到图就把指针写坏"的问题。
+ * 2. 保存走串行写队列：先 await 图片真正落 IDB，再写 LS 指针数据；
+ *    写新值前滚动备份旧值，LS 损坏时按 备份1→备份2→IDB快照 逐级自愈。
+ * 3. 启动必须 boot() 完成（IDB 预热 + 迁移自愈）后才渲染/允许写操作。
+ * 4. 历史污染自愈：data:image 自动迁入 IDB；被写成 picsum 占位/空串
+ *    但 IDB 中仍有原图的，自动恢复指针。
+ * 5. IDB 不可用时降级 ls 模式（图片强压缩后直接存 LS），功能不瘫痪。
+ * ============================================================ */
+var Store = (function () {
+  var DB_NAME = 'shop_images', DB_VER = 2;
+  var S_IMG = 'images', S_BAK = 'backups';
+  var LS_KEY = 'shop_db', LS_BAK1 = 'shop_db_bak1', LS_BAK2 = 'shop_db_bak2';
+  var IMG_PREFIX = 'idb://';
+  var idb = null, mode = 'idb';
+  var imgCache = {};                 // key -> dataURL（boot 时全量预热）
+  var memDb = null, booted = false;
+  var waiters = [];
+  var flushTimer = null, flushing = false, pending = false;
+  var lastSnapAt = 0, saveErrorHandler = null;
+
+  var DEFAULT = {
+    goods: [
+      { id: 1, catId: 'aixi', name: '爱喜酸奶', code: 'No.23', desc: '经典酸奶口味，清爽顺滑', img: 'https://picsum.photos/seed/aixi-yogurt/400/400', sellout: true },
+      { id: 2, catId: 'aixi', name: '爱喜香芋', code: 'No.23', desc: '浓郁香芋风味，绵密细腻', img: 'https://picsum.photos/seed/aixi-taro/400/400', sellout: false },
+      { id: 3, catId: 'aixi', name: '爱喜茉莉', code: 'No.23', desc: '清新茉莉花香，回味悠长', img: 'https://picsum.photos/seed/aixi-jasmine/400/400', sellout: false },
+      { id: 4, catId: 'alishan', name: '阿里山天韵', code: 'No.38', desc: '阿里山经典系列，口感醇厚', img: 'https://picsum.photos/seed/alishan-tianyun/400/400', sellout: false },
+      { id: 5, catId: 'alishan', name: '阿里山芒果', code: 'No.38', desc: '热带芒果风味，果香四溢', img: 'https://picsum.photos/seed/alishan-mango/400/400', sellout: false },
+      { id: 6, catId: 'baile', name: '百乐原味', code: 'No.15', desc: '百乐经典原味，简约之选', img: 'https://picsum.photos/seed/baile-original/400/400', sellout: false }
+    ],
+    categories: [
+      { id: 'all', name: '全部', sort: 0 }, { id: 'aixi', name: '爱喜', sort: 1 },
+      { id: 'alishan', name: '阿里山', sort: 2 }, { id: 'baile', name: '百乐', sort: 3 }
+    ],
+    bulletins: [{ id: 1, content: '欢迎使用物品展示选择平台，精选好物等你来选', enable: true }],
+    cart: [], orders: [],
+    adminAccounts: [
+      { username: '2384214009', pwd: '13727733582q', role: 'super' },
+      { username: 'admin', pwd: 'admin123', role: 'normal' }
+    ],
+    reports: [], bannedDevices: []
+  };
+
+  function clone(o) { return JSON.parse(JSON.stringify(o)); }
+  function deepMergeDefaults(db) {
+    var d = DEFAULT;
+    ['bulletins', 'cart', 'orders', 'reports', 'bannedDevices'].forEach(function (k) {
+      if (!Array.isArray(db[k])) db[k] = clone(d[k]);
+    });
+    if (!Array.isArray(db.goods)) db.goods = [];
+    if (!Array.isArray(db.categories) || db.categories.length === 0) db.categories = clone(d.categories);
+    if (!Array.isArray(db.adminAccounts) || db.adminAccounts.length === 0) db.adminAccounts = clone(d.adminAccounts);
+    return db;
+  }
+  function safeParse(raw) { try { return JSON.parse(raw); } catch (e) { return null; } }
+
+  /* ---------- IndexedDB 封装（全部 Promise 化，等事务真完成） ---------- */
+  function openIdb() {
+    return new Promise(function (resolve, reject) {
+      var req;
+      try { req = indexedDB.open(DB_NAME, DB_VER); } catch (e) { return reject(e); }
+      req.onupgradeneeded = function (e) {
+        var db = e.target.result;
+        if (!db.objectStoreNames.contains(S_IMG)) db.createObjectStore(S_IMG);
+        if (!db.objectStoreNames.contains(S_BAK)) db.createObjectStore(S_BAK);
+      };
+      req.onsuccess = function () { resolve(req.result); };
+      req.onerror = function () { reject(req.error || new Error('IDB 打开失败')); };
+    });
+  }
+  function tx(storeName, mode2, fn) {
+    return new Promise(function (resolve, reject) {
+      var t;
+      try { t = idb.transaction(storeName, mode2); } catch (e) { return reject(e); }
+      var result;
+      try { result = fn(t.objectStore(storeName), t); } catch (e) { return reject(e); }
+      t.oncomplete = function () { resolve(result); };
+      t.onerror = function () { reject(t.error || new Error('IDB 事务失败')); };
+      t.onabort = function () { reject(t.error || new Error('IDB 事务中止')); };
+    });
+  }
+  function idbPut(storeName, key, val) { return tx(storeName, 'readwrite', function (s) { s.put(val, key); }); }
+  function idbDel(storeName, key) { return tx(storeName, 'readwrite', function (s) { s.delete(key); }); }
+  function idbGetAll(storeName) {
+    return new Promise(function (resolve, reject) {
+      var out = {};
+      try {
+        var t = idb.transaction(storeName, 'readonly');
+        var req = t.objectStore(storeName).openCursor();
+        req.onsuccess = function () {
+          var cur = req.result;
+          if (cur) { out[cur.key] = cur.value; cur.continue(); } else resolve(out);
+        };
+        req.onerror = function () { reject(req.error); };
+        t.onerror = function () { reject(t.error); };
+      } catch (e) { reject(e); }
+    });
+  }
+
+  /* ---------- LS 读取（带逐级备份自愈，绝不静默重置） ---------- */
+  function readLsChain() {
+    var order = [LS_KEY, LS_BAK1, LS_BAK2];
+    for (var i = 0; i < order.length; i++) {
+      var raw = null;
+      try { raw = localStorage.getItem(order[i]); } catch (e) {}
+      if (!raw) continue;
+      var db = safeParse(raw);
+      if (db && typeof db === 'object') return { db: db, source: order[i], raw: raw };
+    }
+    return null;
+  }
+
+  var PICSUM_RE = /^https:\/\/picsum\.photos\/seed\/(?:goods_|order_)?/;
+  function imgKeyOf(id) { return 'img_' + id; }
+  function isDataUrl(s) { return typeof s === 'string' && s.indexOf('data:image') === 0; }
+  function isPointer(s) { return typeof s === 'string' && s.indexOf(IMG_PREFIX) === 0; }
+
+  /* ---------- 启动 ---------- */
+  function boot() {
+    return openIdb().then(function (db) {
+      idb = db;
+      return idbGetAll(S_IMG).catch(function () { return {}; });
+    }).then(function (all) {
+      imgCache = all || {};
+    }).catch(function (err) {
+      // IDB 完全不可用 → 降级 ls 模式（图片将强压缩后直接进 LS）
+      mode = 'ls';
+      console.warn('[Store] IndexedDB 不可用，降级为 localStorage 模式', err);
+    }).then(function () {
+      var got = readLsChain();
+      var db, fromIdbSnap = false;
+      if (got) {
+        db = deepMergeDefaults(got.db);
+      } else {
+        // LS 全空/全损：尝试 IDB 快照
+        if (mode === 'idb') {
+          return idbGetAll(S_BAK).then(function (snaps) {
+            var keys = Object.keys(snaps).filter(function (k) { return k.indexOf('snap_') === 0; }).sort().reverse();
+            if (keys.length) {
+              var s = safeParse(snaps[keys[0]]);
+              if (s && typeof s === 'object') return finishBoot(deepMergeDefaults(s), true);
+            }
+            return finishBoot(deepMergeDefaults(clone(DEFAULT)), false);
+          }).catch(function () { return finishBoot(deepMergeDefaults(clone(DEFAULT)), false); });
+        }
+        db = deepMergeDefaults(clone(DEFAULT));
+      }
+      return finishBoot(db, false);
+    });
+  }
+
+  function finishBoot(db, fromSnap) {
+    return migrate(db).then(function (res) {
+      memDb = res.db;
+      booted = true;
+      if (res.changed || fromSnap) scheduleFlush(0); // 仅当确实发生迁移/恢复时落盘
+      waiters.forEach(function (fn) { try { fn(memDb); } catch (e) { console.error(e); } });
+      waiters = [];
+      return memDb;
+    });
+  }
+
+  /* ---------- 历史数据迁移 / 污染自愈，返回 Promise<{db,changed}> ---------- */
+  function migrate(db) {
+    var jobs = [], changed = false;
+    (db.goods || []).forEach(function (g) {
+      var key = imgKeyOf(g.id);
+      if (isDataUrl(g.img)) {
+        if (mode === 'idb') {
+          imgCache[key] = g.img;
+          jobs.push(idbPut(S_IMG, key, g.img));
+          g.img = IMG_PREFIX + key;
+          changed = true;
+        }
+      } else if (isPointer(g.img)) {
+        // 指针保留；缓存缺失也不做任何破坏性处理
+      } else if (!g.img) {
+        if (mode === 'idb' && imgCache[key]) { g.img = IMG_PREFIX + key; changed = true; } // 空串但 IDB 有图 → 救回
+      } else if (PICSUM_RE.test(g.img)) {
+        if (mode === 'idb' && imgCache[key]) { g.img = IMG_PREFIX + key; changed = true; } // 历史占位污染 → 恢复
+      }
+    });
+    // 订单历史 base64 抽到 IDB；cart 去掉冗余 img 字段
+    (db.orders || []).forEach(function (o) {
+      (o.items || []).forEach(function (it) {
+        if (isDataUrl(it.img) && mode === 'idb') {
+          var k = 'order_img_' + (it.goodsName || ('x' + Date.now()));
+          imgCache[k] = it.img; jobs.push(idbPut(S_IMG, k, it.img)); it.img = IMG_PREFIX + k; changed = true;
+        }
+      });
+    });
+    if (Array.isArray(db.cart)) db.cart.forEach(function (c) { if ('img' in c) { delete c.img; changed = true; } });
+    return Promise.all(jobs).then(function () { return { db: db, changed: changed }; }).catch(function () { return { db: db, changed: changed }; });
+  }
+
+  /* ---------- 对外：图片解析（永不写回） ---------- */
+  function imgSrc(ref) {
+    if (!ref) return '';
+    if (isPointer(ref)) return imgCache[ref.substring(IMG_PREFIX.length)] || '';
+    return ref;
+  }
+  function imgExists(ref) {
+    if (!ref) return false;
+    if (isPointer(ref)) return !!imgCache[ref.substring(IMG_PREFIX.length)];
+    return true;
+  }
+  function putImage(key, dataUrl) {
+    imgCache[key] = dataUrl;
+    if (mode === 'idb') return idbPut(S_IMG, key, dataUrl);
+    return Promise.resolve();
+  }
+  function removeImage(key) {
+    delete imgCache[key];
+    if (mode === 'idb') return idbDel(S_IMG, key).catch(function () {});
+    return Promise.resolve();
+  }
+
+  /* ---------- 对外：数据读写 ---------- */
+  function onReady(fn) { if (booted) fn(memDb); else waiters.push(fn); }
+  function get() { return memDb; }
+  // 兼容旧签名 saveDb(db)：传了就整体替换
+  function save(incoming) {
+    if (incoming && incoming !== memDb) memDb = incoming;
+    scheduleFlush(120);
+  }
+  function scheduleFlush(delay) {
+    if (flushTimer) clearTimeout(flushTimer);
+    flushTimer = setTimeout(doFlush, delay);
+  }
+  function flushNow() { if (flushTimer) { clearTimeout(flushTimer); flushTimer = null; } return doFlush(); }
+
+  // 把内存态中的 dataURL 图片搬入 IDB，并把内存字段同步替换为指针。
+  // 必须改 memDb 本身（而不是只改序列化快照），否则 GC 会把刚写入的图误判为孤儿删掉。
+  function swapMemImages(db) {
+    var puts = [];
+    function swap(obj, field, id, prefix) {
+      var val = obj[field];
+      if (!isDataUrl(val)) return;
+      if (mode === 'ls') return; // 降级模式直接保留（上传时已强压缩）
+      var key = (prefix || 'img_') + id;
+      imgCache[key] = val;
+      puts.push(idbPut(S_IMG, key, val));
+      obj[field] = IMG_PREFIX + key;
+    }
+    (db.goods || []).forEach(function (g) { swap(g, 'img', g.id, 'img_'); });
+    (db.orders || []).forEach(function (o) {
+      (o.items || []).forEach(function (it) { if (it.img) swap(it, 'img', (it.goodsName || ('x' + Date.now())), 'order_img_'); });
+    });
+    return Promise.all(puts);
+  }
+
+  function writeLs(str) {
+    var oldRaw = '';
+    try { oldRaw = localStorage.getItem(LS_KEY) || ''; } catch (e) {}
+    try {
+      localStorage.setItem(LS_KEY, str);
+      return true;
+    } catch (e) {
+      // 配额不足：先腾挪备份与非关键 key，再重试一次
+      try {
+        localStorage.removeItem(LS_BAK2);
+        localStorage.removeItem(LS_BAK1);
+        ['fab_pos', 'barrage_closed'].forEach(function (k) { try { localStorage.removeItem(k); } catch (x) {} });
+        localStorage.setItem(LS_KEY, str);
+        return true;
+      } catch (e2) {
+        // 回滚：保留旧数据
+        if (oldRaw) { try { localStorage.setItem(LS_KEY, oldRaw); } catch (x) {} }
+        throw e2;
+      }
+    }
+  }
+
+  function doFlush() {
+    if (flushing) { pending = true; return Promise.resolve(); }
+    flushing = true;
+    // 1) 先把内存态里的图片真正写入 IDB 并就地换成指针（memDb 与磁盘保持一致）
+    return swapMemImages(memDb).then(function () {
+      var snapshot = clone(memDb);
+      var str = JSON.stringify(snapshot);
+      // 写新值前先滚动备份旧值（空间够才留双份）
+      try {
+        var old = localStorage.getItem(LS_KEY);
+        if (old) {
+          var prev1 = localStorage.getItem(LS_BAK1);
+          if (prev1) { try { localStorage.setItem(LS_BAK2, prev1); } catch (e) {} }
+          try { localStorage.setItem(LS_BAK1, old); } catch (e) {}
+        }
+      } catch (e) {}
+      writeLs(str);
+      return afterWrite(str);
+    }).catch(function (err) {
+      console.error('[Store] 落盘失败', err);
+      if (saveErrorHandler) try { saveErrorHandler(err); } catch (e) {}
+      throw err;
+    }).then(function (r) {
+      flushing = false;
+      if (pending) { pending = false; return doFlush(); }
+      return r;
+    }, function (err) {
+      flushing = false;
+      if (pending) { pending = false; return doFlush(); }
+      throw err;
+    });
+  }
+
+  function afterWrite(str) {
+    // IDB 快照（60s 防抖，最多 3 份）。注意：不做自动图片 GC——图片是用户资产，
+    // 误删风险高于孤儿占用，删图只走"删除商品"显式路径与后台手动清理。
+    var jobs = [];
+    if (mode === 'idb' && Date.now() - lastSnapAt > 60000) {
+      lastSnapAt = Date.now();
+      var snapKey = 'snap_' + lastSnapAt;
+      jobs.push(idbPut(S_BAK, snapKey, str).then(function () {
+        return idbGetAll(S_BAK).then(function (snaps) {
+          var keys = Object.keys(snaps).filter(function (k) { return k.indexOf('snap_') === 0; }).sort();
+          var dels = [];
+          while (keys.length > 3) { var old2 = keys.shift(); dels.push(idbDel(S_BAK, old2)); }
+          return Promise.all(dels);
+        });
+      }).catch(function () {}));
+    }
+    return Promise.all(jobs);
+  }
+
+  function referencedKeys() {
+    var refs = {};
+    (memDb.goods || []).forEach(function (g) { if (isPointer(g.img)) refs[g.img.substring(IMG_PREFIX.length)] = 1; });
+    (memDb.orders || []).forEach(function (o) {
+      (o.items || []).forEach(function (it) { if (isPointer(it.img)) refs[it.img.substring(IMG_PREFIX.length)] = 1; });
+    });
+    return refs;
+  }
+  // 手动孤儿回收（后台按钮调用）。安全保护：商品列表为空时拒绝执行，
+  // 避免在数据未加载/异常空库状态下把全部图片误删；返回回收数量。
+  function collectGarbage() {
+    if (mode !== 'idb') return Promise.resolve(0);
+    if (!memDb || !Array.isArray(memDb.goods) || memDb.goods.length === 0) return Promise.resolve(0);
+    var refs = referencedKeys();
+    var removed = 0, dels = [];
+    Object.keys(imgCache).forEach(function (k) {
+      if ((k.indexOf('img_') === 0 || k.indexOf('order_img_') === 0) && !refs[k]) {
+        delete imgCache[k]; removed++;
+        dels.push(idbDel(S_IMG, k).catch(function () {}));
+      }
+    });
+    return Promise.all(dels).then(function () { return removed; });
+  }
+
+  /* ---------- 图片压缩（EXIF 旋正 + 逐级降质 + 尺寸保护） ---------- */
+  function readAsDataURL(file) {
+    return new Promise(function (resolve, reject) {
+      var r = new FileReader();
+      r.onload = function () { resolve(r.result); };
+      r.onerror = function () { reject(new Error('读取文件失败')); };
+      r.readAsDataURL(file);
+    });
+  }
+  function loadImage(url) {
+    return new Promise(function (resolve, reject) {
+      var img = new Image();
+      img.onload = function () { resolve(img); };
+      img.onerror = function () { reject(new Error('图片解码失败，可能格式不支持')); };
+      img.src = url;
+    });
+  }
+  // 解析 JPEG EXIF 方向（1-8），非 JPEG 返回 1
+  function getOrientation(dataUrl) {
+    try {
+      var b64 = dataUrl.split(',')[1] || '';
+      var bin = atob(b64);
+      if (bin.charCodeAt(0) !== 0xFF || bin.charCodeAt(1) !== 0xD8) return 1;
+      var i = 2;
+      while (i < bin.length) {
+        if (bin.charCodeAt(i) !== 0xFF) break;
+        var marker = bin.charCodeAt(i + 1);
+        if (marker === 0xE1) {
+          var len = (bin.charCodeAt(i + 2) << 8) + bin.charCodeAt(i + 3);
+          var seg = bin.substring(i + 4, i + 2 + len);
+          if (seg.indexOf('Exif') === 0) {
+            var little = seg.charCodeAt(6) === 0x49;
+            function w(p) { return little ? (seg.charCodeAt(p) + (seg.charCodeAt(p + 1) << 8)) : ((seg.charCodeAt(p) << 8) + seg.charCodeAt(p + 1)); }
+            var tiff = 6;
+            var off = tiff + w(tiff + 4);
+            var n = w(tiff + 2);
+            for (var t = 0; t < n; t++) {
+              var ep = off + t * 12;
+              if (w(ep) === 0x0112) return w(ep + 8);
+            }
+          }
+          return 1;
+        } else if (marker >= 0xD0 && marker <= 0xD9) { i += 2; } else { i += 2 + ((bin.charCodeAt(i + 2) << 8) + bin.charCodeAt(i + 3)); }
+      }
+    } catch (e) {}
+    return 1;
+  }
+  function drawOriented(img, orientation, maxEdge) {
+    var w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+    var scale = Math.min(1, maxEdge / Math.max(w, h));
+    // iOS canvas 面积保护：总像素不超过 ~16M
+    while (scale > 0.1 && w * scale * h * scale > 16000000) scale *= 0.8;
+    var dw = Math.round(w * scale), dh = Math.round(h * scale);
+    var swap = orientation >= 5 && orientation <= 8;
+    var canvas = document.createElement('canvas');
+    canvas.width = swap ? dh : dw;
+    canvas.height = swap ? dw : dh;
+    var ctx = canvas.getContext('2d');
+    switch (orientation) {
+      case 2: ctx.translate(dw, 0); ctx.scale(-1, 1); break;
+      case 3: ctx.translate(dw, dh); ctx.rotate(Math.PI); break;
+      case 4: ctx.translate(0, dh); ctx.scale(1, -1); break;
+      case 5: ctx.rotate(0.5 * Math.PI); ctx.scale(1, -1); break;
+      case 6: ctx.rotate(0.5 * Math.PI); ctx.translate(0, -dh); break;
+      case 7: ctx.rotate(0.5 * Math.PI); ctx.translate(dw, -dh); ctx.scale(-1, 1); break;
+      case 8: ctx.rotate(-0.5 * Math.PI); ctx.translate(-dw, 0); break;
+    }
+    ctx.drawImage(img, 0, 0, dw, dh);
+    return canvas;
+  }
+  // file → 压缩后的 dataURL。maxEdge/quality/maxKB 可配；ls 模式外部传更小参数
+  function compressImage(file, opts) {
+    opts = opts || {};
+    var maxEdge = opts.maxEdge || 1000, maxKB = opts.maxKB || 200;
+    var qualities = [0.72, 0.62, 0.52];
+    return readAsDataURL(file).then(function (dataUrl) {
+      var orientation = getOrientation(dataUrl);
+      return loadImage(dataUrl).then(function (img) {
+        var edge = maxEdge, out = null;
+        for (var round = 0; round < 4; round++) {
+          var canvas = drawOriented(img, orientation, edge);
+          for (var qi = 0; qi < qualities.length; qi++) {
+            out = canvas.toDataURL('image/jpeg', qualities[qi]);
+            if (out.length <= maxKB * 1024 * 1.37) return out; // base64 膨胀系数
+          }
+          edge = Math.round(edge * 0.82); // 还太大就缩尺寸再来
+          if (edge < 200) break;
+        }
+        return out;
+      });
+    });
+  }
+
+  // 对已有的 dataURL 重新压缩（一键压缩用；图已无 EXIF，orientation 传 1）
+  function recompress(src, maxEdge, quality) {
+    return loadImage(src).then(function (img) {
+      var canvas = drawOriented(img, 1, maxEdge || 600);
+      return canvas.toDataURL('image/jpeg', quality || 0.6);
+    });
+  }
+
+  /* ---------- 备份导出 / 导入（自包含，含原图） ---------- */
+  function exportBundle() {
+    var bundle = clone(memDb);
+    bundle._backupAt = new Date().toLocaleString();
+    bundle._version = 2;
+    bundle.goods.forEach(function (g) { if (isPointer(g.img)) g.img = imgCache[g.img.substring(IMG_PREFIX.length)] || g.img; });
+    (bundle.orders || []).forEach(function (o) {
+      (o.items || []).forEach(function (it) { if (isPointer(it.img)) it.img = imgCache[it.img.substring(IMG_PREFIX.length)] || it.img; });
+    });
+    return JSON.stringify(bundle);
+  }
+  function importBundle(jsonText) {
+    var obj = safeParse(jsonText);
+    if (!obj || typeof obj !== 'object' || !Array.isArray(obj.goods)) return Promise.reject(new Error('备份文件格式不正确'));
+    deepMergeDefaults(obj);
+    return migrate(obj).then(function (res) {
+      memDb = res.db;
+      return doFlush().then(function () { return memDb; });
+    });
+  }
+
+  /* ---------- 空间估算 ---------- */
+  function usage() {
+    var lsBytes = 0;
+    try { lsBytes = JSON.stringify(localStorage).length; } catch (e) {}
+    var idbBytes = 0;
+    Object.keys(imgCache).forEach(function (k) { idbBytes += (imgCache[k] || '').length; });
+    return {
+      mode: mode,
+      lsKB: (lsBytes / 1024).toFixed(1),
+      idbKB: (idbBytes / 1024).toFixed(1),
+      imgCount: Object.keys(imgCache).filter(function (k) { return k.indexOf('img_') === 0 || k.indexOf('order_img_') === 0; }).length
+    };
+  }
+  function estimateQuota() {
+    if (navigator.storage && navigator.storage.estimate) return navigator.storage.estimate();
+    return Promise.resolve({ quota: 5 * 1024 * 1024, usage: 0 });
+  }
+
+  return {
+    boot: boot, onReady: onReady, get: get, save: save, flushNow: flushNow,
+    imgSrc: imgSrc, imgExists: imgExists, putImage: putImage, removeImage: removeImage,
+    imgKeyOf: imgKeyOf, isPointer: isPointer, compressImage: compressImage, recompress: recompress,
+    exportBundle: exportBundle, importBundle: importBundle,
+    collectGarbage: collectGarbage, usage: usage, estimateQuota: estimateQuota,
+    idbGetAll: idbGetAll, S_BAK: S_BAK, S_IMG: S_IMG, idbDel: idbDel,
+    onSaveError: function (fn) { saveErrorHandler = fn; },
+    isBooted: function () { return booted; }, getMode: function () { return mode; }
+  };
+})();
+
+/* ================== 管理后台业务逻辑（基于 Store 重构） ================== */
+var curUser='',curRole='normal',editGoodsId=null,recordFilter='all',hasUploadedImage=false,pendingImgDataUrl='',uploading=false;
+
+/* ===== Supabase配置（跨设备同步举报数据）===== */
 var SUPABASE_URL='https://sfozgzaopzvxrsxbfyla.supabase.co';
 var SUPABASE_ANON_KEY='sb_publishable_H9gYwPXXuKQVpH6Q8XCnRw_yZ1dyaPp';
 var SUPABASE_ENABLED = SUPABASE_URL && SUPABASE_ANON_KEY;
@@ -240,67 +753,404 @@ function insertBannedToSupabase(device){ return supabaseRequest('banned_devices'
 function deleteBannedFromSupabase(deviceId){ return supabaseRequest('banned_devices','DELETE',null,'device_id=eq.'+encodeURIComponent(deviceId)); }
 function updateReportStatus(reportId,status){ return supabaseRequest('reports','PATCH',{status:status},'id=eq.'+encodeURIComponent(reportId)); }
 function deleteReportFromSupabase(reportId){ return supabaseRequest('reports','DELETE',null,'id=eq.'+encodeURIComponent(reportId)); }
-// ================================================
-function getDb(){try{var raw=localStorage.getItem('shop_db');if(!raw)return{goods:[],categories:[],bulletins:[],cart:[],orders:[],adminAccounts:[{username:'2384214009',pwd:'13727733582q',role:'super'},{username:'admin',pwd:'admin123',role:'normal'}]};var db=JSON.parse(raw);db.goods.forEach(function(g){if(g.img&&g.img.indexOf('idb://')===0){var key=g.img.substring(6);g.img=imageCache[key]||'';}});return db;}catch(e){return{goods:[],categories:[],bulletins:[],cart:[],orders:[],adminAccounts:[]};}}
-function saveDb(db){try{var dbCopy=JSON.parse(JSON.stringify(db));dbCopy.goods.forEach(function(g){if(g.img&&g.img.indexOf('data:image')===0){var key='img_'+g.id;idbSave(key,g.img);g.img='idb://'+key;}});localStorage.setItem('shop_db',JSON.stringify(dbCopy));}catch(e){if(e.name==='QuotaExceededError'||e.code===22){showToast('存储空间不足，请删除部分旧物品或订单后重试');}else{showToast('保存失败：'+e.message);}throw e;}}
-function showToast(msg){var t=document.getElementById('toast');t.innerText=msg;t.className='toast show';setTimeout(function(){t.className='toast';},2000);}
+
+function showToast(msg){var t=document.getElementById('toast');t.innerText=msg;t.className='toast show';setTimeout(function(){t.className='toast';},2200);}
 function getGrad(catId){if(catId==='aixi')return'grad-1';if(catId==='alishan')return'grad-2';if(catId==='baile')return'grad-3';return'grad-0';}
-function getCatName(catId){var db=getDb();var c=db.categories.find(function(x){return x.id===catId;});return c?c.name:'';}
+function getCatName(catId){var db=Store.get();if(!db)return'';var c=db.categories.find(function(x){return x.id===catId;});return c?c.name:'';}
+// 统一落盘：改完内存态后调用，确保写盘结果可感知
+function persist(onOk,onFail){
+  Store.save();
+  Store.flushNow().then(function(){ if(onOk)onOk(); }).catch(function(e){
+    var msg=(e&&(e.name==='QuotaExceededError'||e.code===22))?'存储空间不足：请先导出备份，再清理旧订单或压缩图片后重试':('保存失败：'+(e&&e.message?e.message:'未知错误'));
+    showToast(msg); if(onFail)onFail(e);
+  });
+}
+
 function loadRemember(){var rem=localStorage.getItem('admin_remember');if(rem){try{var obj=JSON.parse(atob(rem));document.getElementById('loginUser').value=obj.u;document.getElementById('loginPwd').value=obj.p;document.getElementById('rememberCheck').checked=true;}catch(e){}}}
-function autoLogin(){try{var sess=localStorage.getItem('admin_session');if(!sess)return;var obj=JSON.parse(atob(sess));if(!obj||!obj.u)return;var db=getDb();var admin=db.adminAccounts.find(function(a){return a.username===obj.u;});if(!admin)return;curUser=admin.username;curRole=admin.role||'normal';document.getElementById('loginPage').style.display='none';document.getElementById('adminApp').style.display='block';document.getElementById('adminUser').innerText=curUser;if(curRole==='super'){document.querySelectorAll('.super-only').forEach(function(el){el.style.display='';});}else{document.querySelectorAll('.super-only').forEach(function(el){el.style.display='none';});}switchTab('cat');if(idbLoaded){initAdmin();}else{showToast('加载数据中...');initIDB(initAdmin);}}catch(e){}}
-loadRemember();
-autoLogin();
-function doLogin(){var u=document.getElementById('loginUser').value.trim().toLowerCase();var p=document.getElementById('loginPwd').value.trim();if(!u||!p){showToast('请输入账号和密码');return;}var db=getDb();var admin=db.adminAccounts.find(function(a){return a.username.toLowerCase()===u&&a.pwd===p;});if(!admin){showToast('账号或者密码错误，请检查');return;}curUser=admin.username;curRole=admin.role||'normal';if(document.getElementById('rememberCheck').checked){localStorage.setItem('admin_remember',btoa(JSON.stringify({u:u,p:p})));}else{localStorage.removeItem('admin_remember');}try{localStorage.setItem('admin_session',btoa(JSON.stringify({u:curUser,r:curRole,t:Date.now()})));}catch(e){}document.getElementById('loginPage').style.display='none';document.getElementById('adminApp').style.display='block';document.getElementById('adminUser').innerText=curUser;if(curRole==='super'){document.querySelectorAll('.super-only').forEach(function(el){el.style.display='';});}else{document.querySelectorAll('.super-only').forEach(function(el){el.style.display='none';});}switchTab('cat');if(idbLoaded){initAdmin();}else{showToast('加载数据中...');initIDB(initAdmin);}}
+function enterAdmin(admin){
+  curUser=admin.username;curRole=admin.role||'normal';
+  document.getElementById('loginPage').style.display='none';
+  document.getElementById('adminApp').style.display='block';
+  document.getElementById('adminUser').innerText=curUser;
+  document.querySelectorAll('.super-only').forEach(function(el){el.style.display=(curRole==='super')?'':'none';});
+  switchTab('cat');initAdmin();
+}
+function autoLogin(){
+  try{
+    var sess=localStorage.getItem('admin_session');if(!sess)return;
+    var obj=JSON.parse(atob(sess));if(!obj||!obj.u)return;
+    var db=Store.get();var admin=db.adminAccounts.find(function(a){return a.username===obj.u;});if(!admin)return;
+    enterAdmin(admin);
+  }catch(e){}
+}
+function doLogin(){
+  var u=document.getElementById('loginUser').value.trim().toLowerCase();
+  var p=document.getElementById('loginPwd').value.trim();
+  if(!u||!p){showToast('请输入账号和密码');return;}
+  var db=Store.get();
+  var admin=db.adminAccounts.find(function(a){return a.username.toLowerCase()===u&&a.pwd===p;});
+  if(!admin){showToast('账号或者密码错误，请检查');return;}
+  if(document.getElementById('rememberCheck').checked){localStorage.setItem('admin_remember',btoa(JSON.stringify({u:admin.username,p:p})));}else{localStorage.removeItem('admin_remember');}
+  try{localStorage.setItem('admin_session',btoa(JSON.stringify({u:admin.username,r:admin.role||'normal',t:Date.now()})));}catch(e){}
+  enterAdmin(admin);
+}
 function doLogout(){try{localStorage.removeItem('admin_session');}catch(e){}localStorage.removeItem('admin_remember');location.reload();}
 function goFront(){window.location.href='index.html';}
-function initAdmin(){renderCatSelect();renderCatList();renderGoodsList();renderRecords();renderBulletins();renderAdminList();renderReports();renderBannedDevices();setupImageUpload();showStorageUsage();switchTab('cat');}
-function switchTab(tab){var tabs1=document.querySelectorAll('#tabsRow1 .tab');var tabs2=document.querySelectorAll('#tabsRow2 .tab');var allTabs=Array.prototype.slice.call(tabs1).concat(Array.prototype.slice.call(tabs2));var tabMap={cat:0,addGoods:1,goodsList:2,records:3,bulletin:4,account:5,reports:6,admins:7};allTabs.forEach(function(t,i){t.classList.toggle('active',i===tabMap[tab]);});var panels=['cat','addGoods','goodsList','records','bulletin','account','reports','admins'];panels.forEach(function(p){document.getElementById('panel-'+p).style.display=(p===tab?'block':'none');});if(tab==='addGoods'){resetGoodsForm();}}
-function renderCatSelect(){var db=getDb();var sel=document.getElementById('gCat');sel.innerHTML='<option value="">请选择分类</option>';db.categories.filter(function(c){return c.id!=='all';}).forEach(function(c){sel.innerHTML+='<option value="'+c.id+'">'+c.name+'</option>';});}
-function renderCatList(){var db=getDb();var list=db.categories.filter(function(c){return c.id!=='all';});document.getElementById('catListTitle').innerText='分类列表（'+list.length+'）';var wrap=document.getElementById('catList');if(list.length===0){wrap.innerHTML='<div class="empty"><div class="empty-icon">📂</div><div class="empty-text">暂无分类</div></div>';return;}var html='';list.forEach(function(c){html+='<div class="cat-list-item"><span class="cat-drag">⋮⋮</span><span class="cat-name">'+c.name+'</span><span class="cat-sort">排序：'+(c.sort||0)+'</span><div class="cat-del" onclick="delCat(\''+c.id+'\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></div></div>';});wrap.innerHTML=html;}
-function addCat(){var name=document.getElementById('newCatName').value.trim();var sort=parseInt(document.getElementById('newCatSort').value)||0;if(!name){showToast('请输入分类名称');return;}var db=getDb();var id='cat_'+Date.now();db.categories.push({id:id,name:name,sort:sort});saveDb(db);document.getElementById('newCatName').value='';document.getElementById('newCatSort').value='';renderCatSelect();renderCatList();showToast('分类添加成功');}
-function delCat(id){if(!confirm('确定删除该分类？'))return;var db=getDb();db.categories=db.categories.filter(function(c){return c.id!==id;});saveDb(db);renderCatSelect();renderCatList();showToast('已删除');}
-function resetGoodsForm(){editGoodsId=null;hasUploadedImage=false;document.getElementById('addGoodsTitle').innerText='新增物品';document.getElementById('saveGoodsBtn').innerText='创建物品';document.getElementById('gName').value='';document.getElementById('gCode').value='';document.getElementById('gCat').value='';document.getElementById('gDesc').value='';document.getElementById('gSellout').checked=false;document.getElementById('gPreview').style.display='none';document.getElementById('gPreview').src='';document.getElementById('gUpload').value='';}
-function setupImageUpload(){var upload=document.getElementById('gUpload');if(upload){upload.onchange=function(e){var f=e.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(ev){var img=new Image();img.onload=function(){var maxW=500;var w=img.width,h=img.height;if(w>maxW){h=Math.round(h*maxW/w);w=maxW;}var canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;var ctx=canvas.getContext('2d');ctx.drawImage(img,0,0,w,h);var dataUrl=canvas.toDataURL('image/jpeg',0.6);var preview=document.getElementById('gPreview');preview.src=dataUrl;preview.style.display='block';hasUploadedImage=true;};img.src=ev.target.result;};r.readAsDataURL(f);};}}
-function saveGoods(){var name=document.getElementById('gName').value.trim();var code=document.getElementById('gCode').value.trim();var catId=document.getElementById('gCat').value;var desc=document.getElementById('gDesc').value.trim();var img=document.getElementById('gPreview').src;var sellout=document.getElementById('gSellout').checked;if(!name){showToast('请输入物品名称');return;}if(!code){showToast('请输入物品编号');return;}if(!hasUploadedImage&&!editGoodsId){showToast('请上传封面图片');return;}if(editGoodsId&&!img){showToast('请上传封面图片');return;}var db=getDb();if(editGoodsId){var idx=db.goods.findIndex(function(g){return g.id===editGoodsId;});if(idx>=0){db.goods[idx]={id:editGoodsId,name:name,code:code,catId:catId,desc:desc,img:img,sellout:sellout};}showToast('修改成功');}else{db.goods.push({id:Date.now(),name:name,code:code,catId:catId,desc:desc,img:img,sellout:sellout});showToast('创建成功');}saveDb(db);resetGoodsForm();renderGoodsList();}
-function editGoods(id){var db=getDb();var g=db.goods.find(function(x){return x.id==id;});if(!g)return;switchTab('addGoods');editGoodsId=id;hasUploadedImage=true;document.getElementById('addGoodsTitle').innerText='编辑物品';document.getElementById('saveGoodsBtn').innerText='保存修改';document.getElementById('gName').value=g.name;document.getElementById('gCode').value=g.code||'';document.getElementById('gCat').value=g.catId||'';document.getElementById('gDesc').value=g.desc||'';document.getElementById('gSellout').checked=!!g.sellout;if(g.img){document.getElementById('gPreview').src=g.img;document.getElementById('gPreview').style.display='block';}}
-function toggleGoodsSellout(id){var db=getDb();var g=db.goods.find(function(x){return x.id==id;});if(!g)return;g.sellout=!g.sellout;saveDb(db);renderGoodsList();showToast(g.sellout?'已标记无库存':'已恢复上架');}
-function delGoods(id){if(!confirm('确定删除该物品？'))return;var db=getDb();var goods=db.goods.find(function(x){return x.id==id;});if(goods&&goods.img&&goods.img.indexOf('idb://')===0){idbDelete(goods.img.substring(6));}db.goods=db.goods.filter(function(g){return g.id!=id;});saveDb(db);renderGoodsList();showToast('已删除');}
-function renderGoodsList(){var db=getDb();var keyword=document.getElementById('goodsSearch')?document.getElementById('goodsSearch').value.trim().toLowerCase():'';var list=db.goods;if(keyword){list=list.filter(function(g){return g.name.toLowerCase().indexOf(keyword)!==-1;});}var wrap=document.getElementById('goodsListBody');if(list.length===0){wrap.innerHTML='<div class="empty"><div class="empty-icon">📦</div><div class="empty-text">暂无物品</div></div>';return;}var html='';list.forEach(function(g){var grad=getGrad(g.catId);var statusBadge=g.sellout?'<span class="status-badge sellout">无库存</span>':'<span class="status-badge normal">正常</span>';var imgMissing=false;if(!g.img||g.img===''||g.img.indexOf('idb://')===0){var key=g.img&&g.img.indexOf('idb://')===0?g.img.substring(6):'';if(!key||!imageCache[key]){imgMissing=true;}}var imgBadge=imgMissing?'<span class="status-badge" style="background:#fef0f0;color:var(--danger);">图片丢失</span>':'';var toggleClass=g.sellout?'action-btn toggle off':'action-btn toggle';html+='<div class="goods-row"><div class="goods-row-img '+grad+'"><img src="'+g.img+'" alt="'+g.name+'" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'"><div class="fallback" style="display:none;">'+g.name+'</div></div><div class="goods-row-info"><div class="goods-row-name">'+g.name+' '+statusBadge+' '+imgBadge+'</div><div class="goods-row-code">编号 '+(g.code||'-')+'</div><div class="goods-row-cat">'+(g.catId?getCatName(g.catId):'未分类')+'</div></div><div class="goods-row-actions"><div class="action-btn edit" onclick="editGoods('+g.id+')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div><div class="'+toggleClass+'" onclick="toggleGoodsSellout('+g.id+')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></div><div class="action-btn del" onclick="delGoods('+g.id+')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></div></div></div>';});wrap.innerHTML=html;}
+
+function initAdmin(){renderCatSelect();renderCatList();renderGoodsList();renderRecords();renderBulletins();renderAdminList();renderReports();renderBannedDevices();setupImageUpload();setupBackupImport();showStorageUsage();switchTab('cat');}
+function switchTab(tab){
+  var tabs1=document.querySelectorAll('#tabsRow1 .tab');var tabs2=document.querySelectorAll('#tabsRow2 .tab');
+  var allTabs=Array.prototype.slice.call(tabs1).concat(Array.prototype.slice.call(tabs2));
+  var tabMap={cat:0,addGoods:1,goodsList:2,records:3,bulletin:4,account:5,reports:6,admins:7};
+  allTabs.forEach(function(t,i){t.classList.toggle('active',i===tabMap[tab]);});
+  var panels=['cat','addGoods','goodsList','records','bulletin','account','reports','admins'];
+  panels.forEach(function(p){document.getElementById('panel-'+p).style.display=(p===tab?'block':'none');});
+  if(tab==='addGoods')resetGoodsForm();
+  if(tab==='account')showStorageUsage();
+}
+
+/* ---------- 分类 ---------- */
+function renderCatSelect(){var db=Store.get();var sel=document.getElementById('gCat');sel.innerHTML='<option value="">请选择分类</option>';db.categories.filter(function(c){return c.id!=='all';}).forEach(function(c){sel.innerHTML+='<option value="'+c.id+'">'+c.name+'</option>';});}
+function renderCatList(){var db=Store.get();var list=db.categories.filter(function(c){return c.id!=='all';});document.getElementById('catListTitle').innerText='分类列表（'+list.length+'）';var wrap=document.getElementById('catList');if(list.length===0){wrap.innerHTML='<div class="empty"><div class="empty-icon">📂</div><div class="empty-text">暂无分类</div></div>';return;}var html='';list.forEach(function(c){html+='<div class="cat-list-item"><span class="cat-drag">⋮⋮</span><span class="cat-name">'+c.name+'</span><span class="cat-sort">排序：'+(c.sort||0)+'</span><div class="cat-del" onclick="delCat(\''+c.id+'\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></div></div>';});wrap.innerHTML=html;}
+function addCat(){var name=document.getElementById('newCatName').value.trim();var sort=parseInt(document.getElementById('newCatSort').value)||0;if(!name){showToast('请输入分类名称');return;}var db=Store.get();db.categories.push({id:'cat_'+Date.now(),name:name,sort:sort});persist(function(){document.getElementById('newCatName').value='';document.getElementById('newCatSort').value='';renderCatSelect();renderCatList();showToast('分类添加成功');});}
+function delCat(id){if(!confirm('确定删除该分类？'))return;var db=Store.get();db.categories=db.categories.filter(function(c){return c.id!==id;});persist(function(){renderCatSelect();renderCatList();showToast('已删除');});}
+
+/* ---------- 物品：上传 / 保存 / 编辑 / 删除 ---------- */
+function resetGoodsForm(){
+  editGoodsId=null;hasUploadedImage=false;pendingImgDataUrl='';
+  document.getElementById('addGoodsTitle').innerText='新增物品';
+  document.getElementById('saveGoodsBtn').innerText='创建物品';
+  document.getElementById('saveGoodsBtn').disabled=false;
+  document.getElementById('gName').value='';document.getElementById('gCode').value='';document.getElementById('gCat').value='';
+  document.getElementById('gDesc').value='';document.getElementById('gSellout').checked=false;
+  document.getElementById('gPreview').style.display='none';document.getElementById('gPreview').src='';
+  document.getElementById('gUpload').value='';
+}
+function setupImageUpload(){
+  var upload=document.getElementById('gUpload');if(!upload||upload._bound)return;upload._bound=true;
+  upload.onchange=function(e){
+    var f=e.target.files[0];if(!f)return;
+    if(!/^image\//.test(f.type)){showToast('请选择图片文件');return;}
+    if(f.size>20*1024*1024){showToast('原图过大（超过20MB），请换一张试试');return;}
+    uploading=true;var area=document.getElementById('gUploadArea');area.querySelector('p').innerText='正在处理图片...';
+    var lsMode=Store.getMode()==='ls';
+    Store.compressImage(f,lsMode?{maxEdge:480,maxKB:60}:{maxEdge:1000,maxKB:200}).then(function(dataUrl){
+      pendingImgDataUrl=dataUrl;
+      var preview=document.getElementById('gPreview');preview.src=dataUrl;preview.style.display='block';hasUploadedImage=true;
+      area.querySelector('p').innerText='点击重新上传封面图片';uploading=false;
+    }).catch(function(err){uploading=false;area.querySelector('p').innerText='点击上传封面图片';showToast('图片处理失败：'+(err.message||'未知错误')+'，可换一张截图试试');});
+  };
+}
+function saveGoods(){
+  if(uploading){showToast('图片还在处理中，请稍候');return;}
+  var name=document.getElementById('gName').value.trim();
+  var code=document.getElementById('gCode').value.trim();
+  var catId=document.getElementById('gCat').value;
+  var desc=document.getElementById('gDesc').value.trim();
+  var sellout=document.getElementById('gSellout').checked;
+  if(!name){showToast('请输入物品名称');return;}
+  if(!code){showToast('请输入物品编号');return;}
+  if(!hasUploadedImage&&!editGoodsId){showToast('请上传封面图片');return;}
+  if(editGoodsId&&!hasUploadedImage){showToast('请上传封面图片');return;}
+  var db=Store.get();var btn=document.getElementById('saveGoodsBtn');btn.disabled=true;btn.innerText='保存中...';
+  // 图片：新上传用 pendingImgDataUrl；编辑未换图则保持原指针不动
+  if(editGoodsId){
+    var idx=db.goods.findIndex(function(g){return g.id===editGoodsId;});
+    if(idx<0){btn.disabled=false;btn.innerText='保存修改';showToast('原物品不存在，请返回列表刷新');return;}
+    var old=db.goods[idx];var oldKey=Store.isPointer(old.img)?old.img.substring(6):null;
+    var newImg=pendingImgDataUrl?pendingImgDataUrl:old.img;
+    db.goods[idx]={id:editGoodsId,name:name,code:code,catId:catId,desc:desc,img:newImg,sellout:sellout};
+    // 换图后旧图在落盘后的 GC 阶段自动回收（新图复用 img_<id> 同 key 覆盖）
+    persist(function(){
+      showToast('修改成功');resetGoodsForm();renderGoodsList();
+    },function(){btn.disabled=false;btn.innerText='保存修改';});
+  }else{
+    var newId=Date.now();
+    db.goods.push({id:newId,name:name,code:code,catId:catId,desc:desc,img:pendingImgDataUrl,sellout:sellout});
+    persist(function(){
+      showToast('创建成功');resetGoodsForm();renderGoodsList();
+    },function(){btn.disabled=false;btn.innerText='创建物品';});
+  }
+}
+function editGoods(id){
+  var db=Store.get();var g=db.goods.find(function(x){return x.id==id;});if(!g)return;
+  switchTab('addGoods');editGoodsId=id;hasUploadedImage=true;pendingImgDataUrl='';
+  document.getElementById('addGoodsTitle').innerText='编辑物品';
+  document.getElementById('saveGoodsBtn').innerText='保存修改';
+  document.getElementById('gName').value=g.name;document.getElementById('gCode').value=g.code||'';
+  document.getElementById('gCat').value=g.catId||'';document.getElementById('gDesc').value=g.desc||'';
+  document.getElementById('gSellout').checked=!!g.sellout;
+  var src=Store.imgSrc(g.img);
+  if(src){document.getElementById('gPreview').src=src;document.getElementById('gPreview').style.display='block';}
+  document.getElementById('gUploadArea').querySelector('p').innerText='点击重新上传封面图片（不换可忽略）';
+}
+function toggleGoodsSellout(id){var db=Store.get();var g=db.goods.find(function(x){return x.id==id;});if(!g)return;g.sellout=!g.sellout;persist(function(){renderGoodsList();showToast(g.sellout?'已标记无库存':'已恢复上架');});}
+function delGoods(id){
+  if(!confirm('确定删除该物品？图片也会一并清理。'))return;
+  var db=Store.get();var goods=db.goods.find(function(x){return x.id==id;});
+  db.goods=db.goods.filter(function(g){return g.id!=id;});
+  var after=function(){renderGoodsList();showToast('已删除');};
+  persist(function(){
+    // 落盘成功后删除 IDB 图片（Store GC 也会兜底，这里显式删一次）
+    if(goods&&Store.isPointer(goods.img))Store.removeImage(goods.img.substring(6));
+    after();
+  });
+}
+function renderGoodsList(){
+  var db=Store.get();
+  var keyword=document.getElementById('goodsSearch')?document.getElementById('goodsSearch').value.trim().toLowerCase():'';
+  var list=db.goods;
+  if(keyword)list=list.filter(function(g){return g.name.toLowerCase().indexOf(keyword)!==-1;});
+  var wrap=document.getElementById('goodsListBody');
+  if(list.length===0){wrap.innerHTML='<div class="empty"><div class="empty-icon">📦</div><div class="empty-text">暂无物品</div></div>';return;}
+  var html='';
+  list.forEach(function(g){
+    var grad=getGrad(g.catId);
+    var statusBadge=g.sellout?'<span class="status-badge sellout">无库存</span>':'<span class="status-badge normal">正常</span>';
+    var imgMissing=!Store.imgExists(g.img);
+    var src=Store.imgSrc(g.img)||'';
+    var imgBadge=imgMissing?'<span class="status-badge" style="background:#fef0f0;color:var(--danger);">图片丢失</span>':'';
+    var toggleClass=g.sellout?'action-btn toggle off':'action-btn toggle';
+    html+='<div class="goods-row"><div class="goods-row-img '+grad+'"><img src="'+src+'" alt="'+g.name+'" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'"><div class="fallback" style="display:none;">'+g.name+'</div></div><div class="goods-row-info"><div class="goods-row-name">'+g.name+' '+statusBadge+' '+imgBadge+'</div><div class="goods-row-code">编号 '+(g.code||'-')+'</div><div class="goods-row-cat">'+(g.catId?getCatName(g.catId):'未分类')+'</div></div><div class="goods-row-actions"><div class="action-btn edit" onclick="editGoods('+g.id+')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div><div class="'+toggleClass+'" onclick="toggleGoodsSellout('+g.id+')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></div><div class="action-btn del" onclick="delGoods('+g.id+')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></div></div></div>';
+  });
+  wrap.innerHTML=html;
+}
+
+/* ---------- 提交记录 ---------- */
 function filterRecords(filter,el){recordFilter=filter;document.querySelectorAll('.record-filter').forEach(function(f){f.classList.remove('active');});el.classList.add('active');renderRecords();}
-function renderRecords(){var db=getDb();var list=db.orders;if(recordFilter==='pending'){list=list.filter(function(o){return o.status==='pending';});}else if(recordFilter==='done'){list=list.filter(function(o){return o.status==='done';});}var wrap=document.getElementById('recordsBody');if(list.length===0){wrap.innerHTML='<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">暂无记录</div></div>';return;}var html='';list.forEach(function(order){var statusText=order.status==='done'?'已处理':'待处理';var statusClass=order.status==='done'?'done':'pending';var count=0;order.items.forEach(function(it){count+=it.qty;});var itemsHtml='<div class="record-item-title">物品明细（'+count+'种）</div>';order.items.forEach(function(it){itemsHtml+='<div class="record-item-row"><span class="record-item-name">'+it.goodsName+' × '+it.qty+'</span><span class="record-item-code">编号 '+(it.code||'-')+'</span></div>';});var contactHtml='';if(order.userName)contactHtml+='<div><span class="icon">👤</span>'+order.userName+'</div>';if(order.userPhone)contactHtml+='<div><span class="icon">📞</span>'+order.userPhone+'</div>';if(order.userAddr)contactHtml+='<div><span class="icon">📍</span>'+order.userAddr+'</div>';if(order.note)contactHtml+='<div><span class="icon">📝</span>'+order.note+'</div>';var btnText=order.status==='done'?'↩ 恢复待处理':'✓ 标记已处理';var btnClass='record-action-btn';var delBtn=order.status==='done'?'<button class="record-action-btn del" onclick="delRecord(\''+order.orderNo+'\')">🗑 删除记录</button>':'';html+='<div class="record-card"><div class="record-head"><div><div class="record-no">'+order.orderNo+'</div><div class="record-device">设备ID：'+(order.deviceId||'-').substr(0,12)+'...</div></div><span class="order-status '+statusClass+'">'+statusText+'</span></div><div class="record-items">'+itemsHtml+'</div><div class="record-total"><span class="record-total-label">合计</span><span class="record-total-val">'+order.total+'</span></div><div class="record-contact">'+contactHtml+'</div><div class="record-time">'+order.createTime+'</div><button class="'+btnClass+'" onclick="toggleRecordStatus(\''+order.orderNo+'\')">'+btnText+'</button>'+delBtn+'</div>';});wrap.innerHTML=html;}
-function toggleRecordStatus(orderNo){var db=getDb();var order=db.orders.find(function(o){return o.orderNo===orderNo;});if(!order)return;if(order.status==='done'){order.status='pending';showToast('已恢复为待处理');}else{order.status='done';showToast('已标记为已处理');}saveDb(db);renderRecords();}
-function delRecord(orderNo){if(!confirm('确定删除这条已处理记录？删除后不可恢复。'))return;var db=getDb();db.orders=db.orders.filter(function(o){return o.orderNo!==orderNo;});saveDb(db);renderRecords();showToast('记录已删除');}
-function renderBulletins(){var db=getDb();var wrap=document.getElementById('bulletinList');if(db.bulletins.length===0){wrap.innerHTML='<div class="empty"><div class="empty-icon">📢</div><div class="empty-text">暂无公告</div></div>';return;}var html='';db.bulletins.forEach(function(b){var statusBadge=b.enable?'<span style="color:var(--success);font-size:12px;">已启用</span>':'<span style="color:var(--warning);font-size:12px;">已关闭</span>';var toggleBtn=b.enable?'<button class="bulletin-btn disable" onclick="toggleBulletin(\''+b.id+'\')">关闭公告</button>':'<button class="bulletin-btn enable" onclick="toggleBulletin(\''+b.id+'\')">启用公告</button>';html+='<div class="bulletin-item"><div class="bulletin-content">'+b.content+' '+statusBadge+'</div><div class="bulletin-actions">'+toggleBtn+'<button class="bulletin-btn del" onclick="delBulletin(\''+b.id+'\')">删除</button></div></div>';});wrap.innerHTML=html;}
-function addBulletin(){var content=document.getElementById('newBulletin').value.trim();if(!content){showToast('请输入公告内容');return;}var enable=document.getElementById('newBulletinEnable').checked;var db=getDb();db.bulletins.push({id:'bul_'+Date.now(),content:content,enable:enable});saveDb(db);document.getElementById('newBulletin').value='';renderBulletins();showToast('公告发布成功');}
-function toggleBulletin(id){var db=getDb();var b=db.bulletins.find(function(x){return x.id==id;});if(!b)return;b.enable=!b.enable;saveDb(db);renderBulletins();showToast(b.enable?'已启用':'已关闭');}
-function delBulletin(id){if(!confirm('确定删除这条公告？'))return;var db=getDb();db.bulletins=db.bulletins.filter(function(b){return b.id!=id;});saveDb(db);renderBulletins();showToast('已删除');}
-function changePwd(){var oldP=document.getElementById('oldPwd').value.trim();var newP=document.getElementById('newPwd').value.trim();var confirmP=document.getElementById('confirmPwd').value.trim();var db=getDb();var admin=db.adminAccounts.find(function(a){return a.username===curUser;});if(!admin){showToast('账号不存在');return;}if(oldP!==admin.pwd){showToast('原密码错误');return;}if(newP.length<6){showToast('新密码至少6位');return;}if(newP!==confirmP){showToast('两次输入新密码不一致');return;}admin.pwd=newP;saveDb(db);showToast('密码修改成功，请重新登录');setTimeout(function(){doLogout();},1500);}
-function showStorageUsage(){try{var used=JSON.stringify(localStorage).length;var limit=5*1024*1024;var pct=Math.min(100,Math.round(used/limit*100));var usedKB=(used/1024).toFixed(1);document.getElementById('storageUsage').innerText=usedKB+' KB / 5000 KB ('+pct+'%)';document.getElementById('storageBar').style.width=pct+'%';if(pct>=80){document.getElementById('storageBar').style.background='var(--danger)';}else if(pct>=60){document.getElementById('storageBar').style.background='var(--warning)';}else{document.getElementById('storageBar').style.background='var(--primary)';}}catch(e){document.getElementById('storageUsage').innerText='读取失败';}}
-function compressAllImages(){if(!confirm('确定要压缩所有商品图片吗？这会重新处理所有大图，可释放大量存储空间。'))return;var db=getDb();var count=0;var total=db.goods.length;if(total===0){showToast('没有商品图片需要压缩');return;}db.goods.forEach(function(g){if(g.img&&g.img.indexOf('data:image')===0){var img=new Image();img.onload=function(){var maxW=500;var w=img.width,h=img.height;if(w>maxW){h=Math.round(h*maxW/w);w=maxW;}var canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;var ctx=canvas.getContext('2d');ctx.drawImage(img,0,0,w,h);g.img=canvas.toDataURL('image/jpeg',0.6);count++;if(count>=total){try{saveDb(db);showToast('已压缩'+count+'张图片，空间已释放');showStorageUsage();}catch(e){showToast('压缩后空间仍不足，请删除部分商品或订单');}}};img.src=g.img;}});if(db.goods.filter(function(g){return g.img&&g.img.indexOf('data:image')===0;}).length===0){showToast('没有需要压缩的图片');}}
-function clearDoneOrders(){if(!confirm('确定要清空所有已处理订单吗？此操作不可恢复，待处理订单不受影响。'))return;var db=getDb();var before=db.orders.length;db.orders=db.orders.filter(function(o){return o.status!=='done';});var deleted=before-db.orders.length;saveDb(db);renderRecords();showStorageUsage();showToast('已删除'+deleted+'条已处理订单');}
-function renderAdminList(){var db=getDb();var wrap=document.getElementById('adminList');if(db.adminAccounts.length===0){wrap.innerHTML='<div class="empty"><div class="empty-icon">👥</div><div class="empty-text">暂无管理员</div></div>';return;}var html='';db.adminAccounts.forEach(function(a){var roleBadge=a.role==='super'?'<span class="status-badge normal">超级管理员</span>':'<span class="status-badge" style="background:#e8f5f3;color:var(--primary);">普通管理员</span>';var delBtn=a.username===curUser?'':'<div class="cat-del" onclick="delAdmin(\''+a.username+'\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></div>';html+='<div class="cat-list-item"><span class="cat-name">'+a.username+' '+roleBadge+'</span>'+delBtn+'</div>';});wrap.innerHTML=html;}
-function addAdmin(){var u=document.getElementById('newAdminUser').value.trim().toLowerCase();var p=document.getElementById('newAdminPwd').value.trim();if(!u||!p){showToast('请输入账号和密码');return;}if(p.length<6){showToast('密码至少6位');return;}var db=getDb();if(db.adminAccounts.find(function(a){return a.username.toLowerCase()===u;})){showToast('该账号已存在');return;}db.adminAccounts.push({username:u,pwd:p,role:'normal'});saveDb(db);document.getElementById('newAdminUser').value='';document.getElementById('newAdminPwd').value='';renderAdminList();showToast('管理员添加成功');}
-function delAdmin(username){if(!confirm('确定删除该管理员？'))return;var db=getDb();db.adminAccounts=db.adminAccounts.filter(function(a){return a.username!==username;});saveDb(db);renderAdminList();showToast('已删除');}
-function renderReports(){var wrap=document.getElementById('reportsList');if(!wrap)return;if(SUPABASE_ENABLED){wrap.innerHTML='<div class="empty"><div class="empty-icon">⏳</div><div class="empty-text">加载中...</div></div>';Promise.all([fetchReportsFromSupabase(),fetchBannedFromSupabase()]).then(function(results){var reports=results[0]||[];var banned=results[1]||[];if(reports.length===0){wrap.innerHTML='<div class="empty"><div class="empty-icon">📭</div><div class="empty-text">暂无举报记录</div></div>';return;}var html='';reports.forEach(function(r){var statusBadge=r.status==='done'?'<span class="status-badge done">已处理</span>':'<span class="status-badge pending">待处理</span>';var isBanned=banned.find(function(d){return d.device_id===r.device_id;});var banBtn=isBanned?'<button class="btn-sm" style="background:var(--success);" onclick="unbanDevice(\''+r.device_id+'\')">解除封禁</button>':'<button class="btn-sm" style="background:var(--danger);" onclick="banDevice(\''+r.device_id+'\',\''+r.id+'\')">封禁该设备</button>';var doneBtn=r.status==='done'?'':'<button class="btn-sm" style="background:var(--primary);" onclick="markReportDone(\''+r.id+'\')">标记已处理</button>';var delBtn='<button class="btn-sm" style="background:#fef0f0;color:var(--danger);" onclick="deleteReport(\''+r.id+'\')">删除</button>';html+='<div class="record-card"><div class="record-card-head"><span class="order-no">'+r.id+'</span>'+statusBadge+'</div><div class="record-items"><div class="order-item-row"><span class="order-item-name">举报类型：'+r.type+'</span></div>';if(r.content){html+='<div class="order-item-row"><span class="order-item-code">补充说明：'+r.content+'</span></div>';}html+='<div class="order-item-row"><span class="order-item-code">设备ID：'+r.device_id+'</span></div></div><div class="order-meta">'+r.time+'</div><div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">'+banBtn+doneBtn+delBtn+'</div></div>';});wrap.innerHTML=html;}).catch(function(e){wrap.innerHTML='<div class="empty"><div class="empty-icon">❌</div><div class="empty-text">加载失败：'+e.message+'</div></div>';});}else{var db=getDb();if(!db.reports||db.reports.length===0){wrap.innerHTML='<div class="empty"><div class="empty-icon">📭</div><div class="empty-text">暂无举报记录</div></div>';return;}var html='';db.reports.forEach(function(r){var statusBadge=r.status==='done'?'<span class="status-badge done">已处理</span>':'<span class="status-badge pending">待处理</span>';var isBanned=db.bannedDevices&&db.bannedDevices.find(function(d){return d.deviceId===r.deviceId;});var banBtn=isBanned?'<button class="btn-sm" style="background:var(--success);" onclick="unbanDevice(\''+r.deviceId+'\')">解除封禁</button>':'<button class="btn-sm" style="background:var(--danger);" onclick="banDevice(\''+r.deviceId+'\',\''+r.id+'\')">封禁该设备</button>';var doneBtn=r.status==='done'?'':'<button class="btn-sm" style="background:var(--primary);" onclick="markReportDone(\''+r.id+'\')">标记已处理</button>';var delBtn='<button class="btn-sm" style="background:#fef0f0;color:var(--danger);" onclick="deleteReport(\''+r.id+'\')">删除</button>';html+='<div class="record-card"><div class="record-card-head"><span class="order-no">'+r.id+'</span>'+statusBadge+'</div><div class="record-items"><div class="order-item-row"><span class="order-item-name">举报类型：'+r.type+'</span></div>';if(r.content){html+='<div class="order-item-row"><span class="order-item-code">补充说明：'+r.content+'</span></div>';}html+='<div class="order-item-row"><span class="order-item-code">设备ID：'+r.deviceId+'</span></div></div><div class="order-meta">'+r.time+'</div><div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">'+banBtn+doneBtn+delBtn+'</div></div>';});wrap.innerHTML=html;}}
-function renderBannedDevices(){var wrap=document.getElementById('bannedList');if(!wrap)return;if(SUPABASE_ENABLED){wrap.innerHTML='<div class="empty"><div class="empty-icon">⏳</div><div class="empty-text">加载中...</div></div>';fetchBannedFromSupabase().then(function(list){if(!list||list.length===0){wrap.innerHTML='<div class="empty"><div class="empty-icon">✅</div><div class="empty-text">暂无封禁设备</div></div>';return;}var html='';list.forEach(function(d){html+='<div class="cat-list-item"><span class="cat-name">'+d.device_id+'<br><span style="font-size:12px;color:var(--text2);">封禁时间：'+d.time+'</span></span><button class="btn-sm" style="background:var(--success);" onclick="unbanDevice(\''+d.device_id+'\')">解除封禁</button></div>';});wrap.innerHTML=html;}).catch(function(e){wrap.innerHTML='<div class="empty"><div class="empty-icon">❌</div><div class="empty-text">加载失败：'+e.message+'</div></div>';});}else{var db=getDb();if(!db.bannedDevices||db.bannedDevices.length===0){wrap.innerHTML='<div class="empty"><div class="empty-icon">✅</div><div class="empty-text">暂无封禁设备</div></div>';return;}var html='';db.bannedDevices.forEach(function(d){html+='<div class="cat-list-item"><span class="cat-name">'+d.deviceId+'<br><span style="font-size:12px;color:var(--text2);">封禁时间：'+d.time+'</span></span><button class="btn-sm" style="background:var(--success);" onclick="unbanDevice(\''+d.deviceId+'\')">解除封禁</button></div>';});wrap.innerHTML=html;}}
-function banDevice(deviceId,reportId){try{var db=getDb();if(!db.bannedDevices)db.bannedDevices=[];if(!db.reports)db.reports=[];if(db.bannedDevices.find(function(d){return d.deviceId===deviceId;})){showToast('该设备已在封禁列表中');return;}var now=new Date();var timeStr=now.getFullYear()+'/'+(now.getMonth()+1)+'/'+now.getDate()+' '+now.getHours()+':'+(now.getMinutes()<10?'0':'')+now.getMinutes();db.bannedDevices.push({deviceId:deviceId,time:timeStr,reason:'举报违规'});if(reportId){var r=db.reports.find(function(x){return x.id===reportId;});if(r)r.status='done';}saveDb(db);renderReports();renderBannedDevices();showToast('设备已封禁');if(SUPABASE_ENABLED){insertBannedToSupabase({device_id:deviceId,time:timeStr,reason:'举报违规'}).catch(function(e){console.warn('Supabase封禁同步失败:',e);});if(reportId){updateReportStatus(reportId,'done').catch(function(e){console.warn('Supabase举报状态更新失败:',e);});}}}catch(e){showToast('封禁失败：'+e.message);}}
-function unbanDevice(deviceId){try{var db=getDb();if(!db.bannedDevices)db.bannedDevices=[];db.bannedDevices=db.bannedDevices.filter(function(d){return d.deviceId!==deviceId;});saveDb(db);renderReports();renderBannedDevices();showToast('已解除封禁');if(SUPABASE_ENABLED){deleteBannedFromSupabase(deviceId).catch(function(e){console.warn('Supabase解除封禁同步失败:',e);});}}catch(e){showToast('解除失败：'+e.message);}}
-function markReportDone(reportId){var db=getDb();var r=db.reports.find(function(x){return x.id===reportId;});if(r){r.status='done';saveDb(db);renderReports();showToast('已标记为已处理');if(SUPABASE_ENABLED){updateReportStatus(reportId,'done').catch(function(e){console.warn('Supabase举报状态更新失败:',e);});}}}
+function renderRecords(){
+  var db=Store.get();var list=db.orders;
+  if(recordFilter==='pending')list=list.filter(function(o){return o.status==='pending';});
+  else if(recordFilter==='done')list=list.filter(function(o){return o.status==='done';});
+  var wrap=document.getElementById('recordsBody');
+  if(list.length===0){wrap.innerHTML='<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">暂无记录</div></div>';return;}
+  var html='';
+  list.forEach(function(order){
+    var statusText=order.status==='done'?'已处理':'待处理';var statusClass=order.status==='done'?'done':'pending';var count=0;
+    order.items.forEach(function(it){count+=it.qty;});
+    var itemsHtml='<div class="record-item-title">物品明细（'+count+'种）</div>';
+    order.items.forEach(function(it){itemsHtml+='<div class="record-item-row"><span class="record-item-name">'+it.goodsName+' × '+it.qty+'</span><span class="record-item-code">编号 '+(it.code||'-')+'</span></div>';});
+    var contactHtml='';
+    if(order.userName)contactHtml+='<div><span class="icon">👤</span>'+order.userName+'</div>';
+    if(order.userPhone)contactHtml+='<div><span class="icon">📞</span>'+order.userPhone+'</div>';
+    if(order.userAddr)contactHtml+='<div><span class="icon">📍</span>'+order.userAddr+'</div>';
+    if(order.note)contactHtml+='<div><span class="icon">📝</span>'+order.note+'</div>';
+    var btnText=order.status==='done'?'↩ 恢复待处理':'✓ 标记已处理';
+    var delBtn=order.status==='done'?'<button class="record-action-btn del" onclick="delRecord(\''+order.orderNo+'\')">🗑 删除记录</button>':'';
+    html+='<div class="record-card"><div class="record-head"><div><div class="record-no">'+order.orderNo+'</div><div class="record-device">设备ID：'+(order.deviceId||'-').substr(0,12)+'...</div></div><span class="order-status '+statusClass+'">'+statusText+'</span></div><div class="record-items">'+itemsHtml+'</div><div class="record-total"><span class="record-total-label">合计</span><span class="record-total-val">'+order.total+'</span></div><div class="record-contact">'+contactHtml+'</div><div class="record-time">'+order.createTime+'</div><button class="record-action-btn" onclick="toggleRecordStatus(\''+order.orderNo+'\')">'+btnText+'</button>'+delBtn+'</div>';
+  });
+  wrap.innerHTML=html;
+}
+function toggleRecordStatus(orderNo){var db=Store.get();var order=db.orders.find(function(o){return o.orderNo===orderNo;});if(!order)return;if(order.status==='done'){order.status='pending';showToast('已恢复为待处理');}else{order.status='done';showToast('已标记已处理');}persist(renderRecords);}
+function delRecord(orderNo){if(!confirm('确定删除这条已处理记录？删除后不可恢复。'))return;var db=Store.get();db.orders=db.orders.filter(function(o){return o.orderNo!==orderNo;});persist(function(){renderRecords();showToast('记录已删除');});}
+
+/* ---------- 公告 ---------- */
+function renderBulletins(){var db=Store.get();var wrap=document.getElementById('bulletinList');if(db.bulletins.length===0){wrap.innerHTML='<div class="empty"><div class="empty-icon">📢</div><div class="empty-text">暂无公告</div></div>';return;}var html='';db.bulletins.forEach(function(b){var statusBadge=b.enable?'<span style="color:var(--success);font-size:12px;">已启用</span>':'<span style="color:var(--warning);font-size:12px;">已关闭</span>';var toggleBtn=b.enable?'<button class="bulletin-btn disable" onclick="toggleBulletin(\''+b.id+'\')">关闭公告</button>':'<button class="bulletin-btn enable" onclick="toggleBulletin(\''+b.id+'\')">启用公告</button>';html+='<div class="bulletin-item"><div class="bulletin-content">'+b.content+' '+statusBadge+'</div><div class="bulletin-actions">'+toggleBtn+'<button class="bulletin-btn del" onclick="delBulletin(\''+b.id+'\')">删除</button></div></div>';});wrap.innerHTML=html;}
+function addBulletin(){var content=document.getElementById('newBulletin').value.trim();if(!content){showToast('请输入公告内容');return;}var enable=document.getElementById('newBulletinEnable').checked;var db=Store.get();db.bulletins.push({id:'bul_'+Date.now(),content:content,enable:enable});persist(function(){document.getElementById('newBulletin').value='';renderBulletins();showToast('公告发布成功');});}
+function toggleBulletin(id){var db=Store.get();var b=db.bulletins.find(function(x){return x.id===id;});if(!b)return;b.enable=!b.enable;persist(function(){renderBulletins();showToast(b.enable?'已启用':'已关闭');});}
+function delBulletin(id){if(!confirm('确定删除这条公告？'))return;var db=Store.get();db.bulletins=db.bulletins.filter(function(b){return b.id!=id;});persist(function(){renderBulletins();showToast('已删除');});}
+
+/* ---------- 账号 ---------- */
+function changePwd(){
+  var oldP=document.getElementById('oldPwd').value.trim();var newP=document.getElementById('newPwd').value.trim();var confirmP=document.getElementById('confirmPwd').value.trim();
+  var db=Store.get();var admin=db.adminAccounts.find(function(a){return a.username===curUser;});
+  if(!admin){showToast('账号不存在');return;}
+  if(oldP!==admin.pwd){showToast('原密码错误');return;}
+  if(newP.length<6){showToast('新密码至少6位');return;}
+  if(newP!==confirmP){showToast('两次输入新密码不一致');return;}
+  admin.pwd=newP;persist(function(){showToast('密码修改成功，请重新登录');setTimeout(function(){doLogout();},1500);});
+}
+
+/* ---------- 存储维护 / 备份恢复 ---------- */
+function showStorageUsage(){
+  var u=Store.usage();
+  var limit=5*1024*1024;
+  Store.estimateQuota().then(function(q){
+    var el=document.getElementById('storageUsage');if(!el)return;
+    var html='结构化数据：'+u.lsKB+' KB / 约 5000 KB';
+    html+='<br>图片库（IndexedDB）：'+u.idbKB+' KB，共 '+u.imgCount+' 张';
+    if(q&&q.quota)html+='<br>浏览器总配额：约 '+(q.quota/1024/1024).toFixed(0)+' MB';
+    el.innerHTML=html;
+    var pct=Math.min(100,Math.round(parseFloat(u.lsKB)/5000*100));
+    var bar=document.getElementById('storageBar');bar.style.width=pct+'%';
+    bar.style.background=pct>=80?'var(--danger)':(pct>=60?'var(--warning)':'var(--primary)');
+    var mode=document.getElementById('storageMode');
+    mode.innerText=u.mode==='idb'?'（图片安全模式）':'（兼容模式：图片被强压缩，建议用常用浏览器打开）';
+  }).catch(function(){
+    var el=document.getElementById('storageUsage');if(el)el.innerHTML='结构化数据：'+u.lsKB+' KB<br>图片库：'+u.idbKB+' KB，共 '+u.imgCount+' 张';
+  });
+}
+function compressAllImages(){
+  if(!confirm('确定要压缩所有商品图片吗？将逐张优化，过程中请勿关闭页面。'))return;
+  var db=Store.get();var goods=db.goods.slice();var i=0,done=0;
+  if(goods.length===0){showToast('没有物品');return;}
+  showToast('开始压缩 0/'+goods.length);
+  function step(){
+    if(i>=goods.length){
+      persist(function(){showToast('压缩完成，共优化 '+done+' 张');showStorageUsage();renderGoodsList();});
+      return;
+    }
+    var g=goods[i++];var src=Store.imgSrc(g.img);
+    if(!src||src.indexOf('data:image')!==0){step();return;}
+    Store.recompress(src,600,0.6).then(function(out){
+      if(out.length<src.length){
+        g.img=out; // 仍是 dataURL，落盘时 Store 会自动搬入 IDB 并换成指针
+        done++;
+      }
+      showToast('压缩中 '+i+'/'+goods.length);
+      setTimeout(step,10);
+    }).catch(function(){step();});
+  }
+  step();
+}
+function clearDoneOrders(){if(!confirm('确定要清空所有已处理订单吗？此操作不可恢复，待处理订单不受影响。'))return;var db=Store.get();var before=db.orders.length;db.orders=db.orders.filter(function(o){return o.status!=='done';});var deleted=before-db.orders.length;persist(function(){renderRecords();showStorageUsage();showToast('已删除'+deleted+'条已处理订单');});}
+function cleanupImages(){
+  var db=Store.get();
+  if(!db.goods||db.goods.length===0){showToast('当前没有物品，为安全起见已阻止清理');return;}
+  if(!confirm('将清理没有被任何物品引用的孤儿图片，不会影响现有物品的封面，确定继续？'))return;
+  Store.collectGarbage().then(function(n){
+    showStorageUsage();
+    showToast(n>0?('清理完成，释放 '+n+' 张无用图片'):'没有需要清理的图片');
+  }).catch(function(e){showToast('清理失败：'+e.message);});
+}
+function exportBackup(){
+  try{
+    var json=Store.exportBundle();
+    var blob=new Blob([json],{type:'application/json'});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');
+    var d=new Date();var pad=function(n){return(n<10?'0':'')+n;};
+    a.href=url;a.download='物品平台备份_'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'_'+pad(d.getHours())+pad(d.getMinutes())+'.json';
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    setTimeout(function(){URL.revokeObjectURL(url);},1500);
+    showToast('备份已导出，请妥善保存');
+  }catch(e){showToast('导出失败：'+e.message);}
+}
+function setupBackupImport(){
+  var input=document.getElementById('backupFile');if(!input||input._bound)return;input._bound=true;
+  input.onchange=function(e){
+    var f=e.target.files[0];if(!f)return;
+    if(!confirm('导入备份将覆盖当前全部物品、分类、订单和图片，确定继续？建议先导出当前数据留底。')){input.value='';return;}
+    var r=new FileReader();
+    r.onload=function(){
+      Store.importBundle(r.result).then(function(){
+        showToast('导入成功，页面即将刷新');setTimeout(function(){location.reload();},1200);
+      }).catch(function(err){showToast('导入失败：'+err.message);});
+    };
+    r.onerror=function(){showToast('读取备份文件失败');};
+    r.readAsText(f);
+  };
+}
+function restoreSnapshot(){
+  Store.idbGetAll(Store.S_BAK).then(function(snaps){
+    var keys=Object.keys(snaps).filter(function(k){return k.indexOf('snap_')===0;}).sort().reverse();
+    if(keys.length===0){showToast('暂无本机自动快照');return;}
+    var menu=keys.map(function(k,i){var t=new Date(parseInt(k.substring(5))).toLocaleString();return (i+1)+'. '+t;}).join('\n');
+    var pick=prompt('发现以下自动快照，输入序号恢复（最新为1）：\n'+menu,'1');
+    if(pick===null)return;var idx=parseInt(pick)-1;if(isNaN(idx)||!keys[idx]){showToast('序号无效');return;}
+    if(!confirm('用该快照覆盖当前数据？'))return;
+    Store.importBundle(snaps[keys[idx]]).then(function(){showToast('已恢复，页面刷新中');setTimeout(function(){location.reload();},1200);}).catch(function(e){showToast('恢复失败：'+e.message);});
+  }).catch(function(){showToast('快照读取失败');});
+}
+
+/* ---------- 管理员 ---------- */
+function renderAdminList(){var db=Store.get();var wrap=document.getElementById('adminList');if(db.adminAccounts.length===0){wrap.innerHTML='<div class="empty"><div class="empty-icon">👥</div><div class="empty-text">暂无管理员</div></div>';return;}var html='';db.adminAccounts.forEach(function(a){var roleBadge=a.role==='super'?'<span class="status-badge normal">超级管理员</span>':'<span class="status-badge" style="background:#e8f5f3;color:var(--primary);">普通管理员</span>';var delBtn=a.username===curUser?'':'<div class="cat-del" onclick="delAdmin(\''+a.username+'\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></div>';html+='<div class="cat-list-item"><span class="cat-name">'+a.username+' '+roleBadge+'</span>'+delBtn+'</div>';});wrap.innerHTML=html;}
+function addAdmin(){var u=document.getElementById('newAdminUser').value.trim().toLowerCase();var p=document.getElementById('newAdminPwd').value.trim();if(!u||!p){showToast('请输入账号和密码');return;}if(p.length<6){showToast('密码至少6位');return;}var db=Store.get();if(db.adminAccounts.find(function(a){return a.username.toLowerCase()===u;})){showToast('该账号已存在');return;}db.adminAccounts.push({username:u,pwd:p,role:'normal'});persist(function(){document.getElementById('newAdminUser').value='';document.getElementById('newAdminPwd').value='';renderAdminList();showToast('管理员添加成功');});}
+function delAdmin(username){if(!confirm('确定删除该管理员？'))return;var db=Store.get();db.adminAccounts=db.adminAccounts.filter(function(a){return a.username!==username;});persist(function(){renderAdminList();showToast('已删除');});}
+
+/* ---------- 举报 / 封禁 ---------- */
+function renderReports(){
+  var wrap=document.getElementById('reportsList');if(!wrap)return;
+  if(SUPABASE_ENABLED){
+    wrap.innerHTML='<div class="empty"><div class="empty-icon">⏳</div><div class="empty-text">加载中...</div></div>';
+    Promise.all([fetchReportsFromSupabase(),fetchBannedFromSupabase()]).then(function(results){
+      var reports=results[0]||[];var banned=results[1]||[];
+      if(reports.length===0){wrap.innerHTML='<div class="empty"><div class="empty-icon">📭</div><div class="empty-text">暂无举报记录</div></div>';return;}
+      var html='';
+      reports.forEach(function(r){
+        var statusBadge=r.status==='done'?'<span class="status-badge done">已处理</span>':'<span class="status-badge pending">待处理</span>';
+        var isBanned=banned.find(function(d){return d.device_id===r.device_id;});
+        var banBtn=isBanned?'<button class="btn-sm" style="background:var(--success);" onclick="unbanDevice(\''+r.device_id+'\')">解除封禁</button>':'<button class="btn-sm" style="background:var(--danger);" onclick="banDevice(\''+r.device_id+'\',\''+r.id+'\')">封禁该设备</button>';
+        var doneBtn=r.status==='done'?'':'<button class="btn-sm" style="background:var(--primary);" onclick="markReportDone(\''+r.id+'\')">标记已处理</button>';
+        var delBtn='<button class="btn-sm" style="background:#fef0f0;color:var(--danger);" onclick="deleteReport(\''+r.id+'\')">删除</button>';
+        html+='<div class="record-card"><div class="record-card-head"><span class="order-no">'+r.id+'</span>'+statusBadge+'</div><div class="record-items"><div class="order-item-row"><span class="order-item-name">举报类型：'+r.type+'</span></div>';
+        if(r.content)html+='<div class="order-item-row"><span class="order-item-code">补充说明：'+r.content+'</span></div>';
+        html+='<div class="order-item-row"><span class="order-item-code">设备ID：'+r.device_id+'</span></div></div><div class="order-meta">'+r.time+'</div><div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">'+banBtn+doneBtn+delBtn+'</div></div>';
+      });
+      wrap.innerHTML=html;
+    }).catch(function(e){wrap.innerHTML='<div class="empty"><div class="empty-icon">❌</div><div class="empty-text">加载失败：'+e.message+'</div></div>';});
+  }else{
+    var db=Store.get();if(!db.reports||db.reports.length===0){wrap.innerHTML='<div class="empty"><div class="empty-icon">📭</div><div class="empty-text">暂无举报记录</div></div>';return;}
+    var html='';
+    db.reports.forEach(function(r){
+      var statusBadge=r.status==='done'?'<span class="status-badge done">已处理</span>':'<span class="status-badge pending">待处理</span>';
+      var isBanned=db.bannedDevices&&db.bannedDevices.find(function(d){return d.deviceId===r.deviceId;});
+      var banBtn=isBanned?'<button class="btn-sm" style="background:var(--success);" onclick="unbanDevice(\''+r.deviceId+'\')">解除封禁</button>':'<button class="btn-sm" style="background:var(--danger);" onclick="banDevice(\''+r.deviceId+'\',\''+r.id+'\')">封禁该设备</button>';
+      var doneBtn=r.status==='done'?'':'<button class="btn-sm" style="background:var(--primary);" onclick="markReportDone(\''+r.id+'\')">标记已处理</button>';
+      var delBtn='<button class="btn-sm" style="background:#fef0f0;color:var(--danger);" onclick="deleteReport(\''+r.id+'\')">删除</button>';
+      html+='<div class="record-card"><div class="record-card-head"><span class="order-no">'+r.id+'</span>'+statusBadge+'</div><div class="record-items"><div class="order-item-row"><span class="order-item-name">举报类型：'+r.type+'</span></div>';
+      if(r.content)html+='<div class="order-item-row"><span class="order-item-code">补充说明：'+r.content+'</span></div>';
+      html+='<div class="order-item-row"><span class="order-item-code">设备ID：'+r.deviceId+'</span></div></div><div class="order-meta">'+r.time+'</div><div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">'+banBtn+doneBtn+delBtn+'</div></div>';
+    });
+    wrap.innerHTML=html;
+  }
+}
+function renderBannedDevices(){
+  var wrap=document.getElementById('bannedList');if(!wrap)return;
+  if(SUPABASE_ENABLED){
+    wrap.innerHTML='<div class="empty"><div class="empty-icon">⏳</div><div class="empty-text">加载中...</div></div>';
+    fetchBannedFromSupabase().then(function(list){
+      if(!list||list.length===0){wrap.innerHTML='<div class="empty"><div class="empty-icon">✅</div><div class="empty-text">暂无封禁设备</div></div>';return;}
+      var html='';list.forEach(function(d){html+='<div class="cat-list-item"><span class="cat-name">'+d.device_id+'<br><span style="font-size:12px;color:var(--text2);">封禁时间：'+d.time+'</span></span><button class="btn-sm" style="background:var(--success);" onclick="unbanDevice(\''+d.device_id+'\')">解除封禁</button></div>';});wrap.innerHTML=html;
+    }).catch(function(e){wrap.innerHTML='<div class="empty"><div class="empty-icon">❌</div><div class="empty-text">加载失败：'+e.message+'</div></div>';});
+  }else{
+    var db=Store.get();if(!db.bannedDevices||db.bannedDevices.length===0){wrap.innerHTML='<div class="empty"><div class="empty-icon">✅</div><div class="empty-text">暂无封禁设备</div></div>';return;}
+    var html='';db.bannedDevices.forEach(function(d){html+='<div class="cat-list-item"><span class="cat-name">'+d.deviceId+'<br><span style="font-size:12px;color:var(--text2);">封禁时间：'+d.time+'</span></span><button class="btn-sm" style="background:var(--success);" onclick="unbanDevice(\''+d.deviceId+'\')">解除封禁</button></div>';});wrap.innerHTML=html;
+  }
+}
+function banDevice(deviceId,reportId){
+  try{
+    var db=Store.get();
+    if(!db.bannedDevices)db.bannedDevices=[];if(!db.reports)db.reports=[];
+    if(db.bannedDevices.find(function(d){return d.deviceId===deviceId;})){showToast('该设备已在封禁列表中');return;}
+    var now=new Date();var timeStr=now.getFullYear()+'/'+(now.getMonth()+1)+'/'+now.getDate()+' '+now.getHours()+':'+(now.getMinutes()<10?'0':'')+now.getMinutes();
+    db.bannedDevices.push({deviceId:deviceId,time:timeStr,reason:'举报违规'});
+    if(reportId){var r=db.reports.find(function(x){return x.id===reportId;});if(r)r.status='done';}
+    persist(function(){renderReports();renderBannedDevices();showToast('设备已封禁');});
+    if(SUPABASE_ENABLED){
+      insertBannedToSupabase({device_id:deviceId,time:timeStr,reason:'举报违规'}).catch(function(e){console.warn('Supabase封禁同步失败:',e);});
+      if(reportId)updateReportStatus(reportId,'done').catch(function(e){console.warn('Supabase举报状态更新失败:',e);});
+    }
+  }catch(e){showToast('封禁失败：'+e.message);}
+}
+function unbanDevice(deviceId){
+  try{
+    var db=Store.get();if(!db.bannedDevices)db.bannedDevices=[];
+    db.bannedDevices=db.bannedDevices.filter(function(d){return d.deviceId!==deviceId;});
+    persist(function(){renderReports();renderBannedDevices();showToast('已解除封禁');});
+    if(SUPABASE_ENABLED)deleteBannedFromSupabase(deviceId).catch(function(e){console.warn('Supabase解除封禁同步失败:',e);});
+  }catch(e){showToast('解除失败：'+e.message);}
+}
+function markReportDone(reportId){var db=Store.get();var r=db.reports.find(function(x){return x.id===reportId;});if(r){r.status='done';persist(function(){renderReports();showToast('已标记为已处理');});if(SUPABASE_ENABLED)updateReportStatus(reportId,'done').catch(function(e){console.warn('Supabase举报状态更新失败:',e);});}}
 function deleteReport(reportId){
   try{
-    showToast('正在删除...');
-    var db=getDb();
-    if(db.reports){ db.reports=db.reports.filter(function(r){return r.id!==reportId;}); saveDb(db); }
+    showToast('正在删除...');var db=Store.get();
+    if(db.reports){db.reports=db.reports.filter(function(r){return r.id!==reportId;});Store.save();Store.flushNow().catch(function(){});}
     if(SUPABASE_ENABLED){
-      deleteReportFromSupabase(reportId).then(function(){
-        renderReports(); showToast('举报记录已删除');
-      }).catch(function(e){
-        console.warn('Supabase删除举报失败:',e);
-        renderReports(); showToast('举报记录已删除');
-      });
-    }else{ renderReports(); showToast('举报记录已删除'); }
-  }catch(e){ showToast('删除失败：'+e.message); }
+      deleteReportFromSupabase(reportId).then(function(){renderReports();showToast('举报记录已删除');}).catch(function(e){console.warn('Supabase删除举报失败:',e);renderReports();showToast('举报记录已删除');});
+    }else{renderReports();showToast('举报记录已删除');}
+  }catch(e){showToast('删除失败：'+e.message);}
 }
+
+/* ---------- 启动：必须等 Store.boot 完成 ---------- */
+Store.onSaveError(function(){});
+Store.boot().then(function(){
+  var loading=document.getElementById('bootLoading');if(loading)loading.style.display='none';
+  loadRemember();autoLogin();
+}).catch(function(err){
+  var loading=document.getElementById('bootLoading');
+  if(loading)loading.innerHTML='<p style="color:#f56c6c;padding:0 24px;text-align:center;">数据存储初始化失败：'+(err&&err.message?err.message:'')+'<br>请不要用无痕模式，并清理少量空间后刷新</p>';
+});
 
 </script>
 </body>

@@ -149,6 +149,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans G
 .err-bar.show{display:block;}
 .toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.75);color:#fff;padding:10px 20px;border-radius:8px;font-size:14px;z-index:9999;display:none;max-width:80%;text-align:center;}
 .toast.show{display:block;}
+.boot-loading{position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg);z-index:10000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;}
+.boot-spinner{width:38px;height:38px;border:3px solid var(--primary-light);border-top-color:var(--primary);border-radius:50%;animation:bootspin .8s linear infinite;}
+@keyframes bootspin{to{transform:rotate(360deg);}}
+.boot-loading p{font-size:13px;color:var(--text2);}
 .report-types{display:flex;flex-wrap:wrap;gap:8px;}
 .report-type{padding:8px 16px;border-radius:20px;background:#fff;border:1px solid var(--border);font-size:13px;color:var(--text2);cursor:pointer;transition:all .2s;}
 .report-type.active{background:var(--primary);color:#fff;border-color:transparent;}
@@ -168,6 +172,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans G
 </style>
 </head>
 <body>
+<div class="boot-loading" id="bootLoading"><div class="boot-spinner"></div><p>正在加载...</p></div>
 <div class="err-bar" id="errBar"></div>
 <div class="toast" id="toast"></div>
 <div class="app" id="app">
@@ -274,35 +279,520 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans G
   <div class="page-body" id="odBody"></div>
 </div>
 <script>
+/*==== Store 统一存储层 ====*/
+/* ============================================================
+ * Store —— 统一存储层（重构核心，前后台共用同一份逻辑）
+ * 设计原则：
+ * 1. 图片唯一主存储为 IndexedDB；localStorage 内 goods.img 永远只存
+ *    "idb://key" 指针 / https外链 / 空串，任何读取路径都不再把指针
+ *    原地替换成 base64，从根上杜绝"读不到图就把指针写坏"的问题。
+ * 2. 保存走串行写队列：先 await 图片真正落 IDB，再写 LS 指针数据；
+ *    写新值前滚动备份旧值，LS 损坏时按 备份1→备份2→IDB快照 逐级自愈。
+ * 3. 启动必须 boot() 完成（IDB 预热 + 迁移自愈）后才渲染/允许写操作。
+ * 4. 历史污染自愈：data:image 自动迁入 IDB；被写成 picsum 占位/空串
+ *    但 IDB 中仍有原图的，自动恢复指针。
+ * 5. IDB 不可用时降级 ls 模式（图片强压缩后直接存 LS），功能不瘫痪。
+ * ============================================================ */
+var Store = (function () {
+  var DB_NAME = 'shop_images', DB_VER = 2;
+  var S_IMG = 'images', S_BAK = 'backups';
+  var LS_KEY = 'shop_db', LS_BAK1 = 'shop_db_bak1', LS_BAK2 = 'shop_db_bak2';
+  var IMG_PREFIX = 'idb://';
+  var idb = null, mode = 'idb';
+  var imgCache = {};                 // key -> dataURL（boot 时全量预热）
+  var memDb = null, booted = false;
+  var waiters = [];
+  var flushTimer = null, flushing = false, pending = false;
+  var lastSnapAt = 0, saveErrorHandler = null;
+
+  var DEFAULT = {
+    goods: [
+      { id: 1, catId: 'aixi', name: '爱喜酸奶', code: 'No.23', desc: '经典酸奶口味，清爽顺滑', img: 'https://picsum.photos/seed/aixi-yogurt/400/400', sellout: true },
+      { id: 2, catId: 'aixi', name: '爱喜香芋', code: 'No.23', desc: '浓郁香芋风味，绵密细腻', img: 'https://picsum.photos/seed/aixi-taro/400/400', sellout: false },
+      { id: 3, catId: 'aixi', name: '爱喜茉莉', code: 'No.23', desc: '清新茉莉花香，回味悠长', img: 'https://picsum.photos/seed/aixi-jasmine/400/400', sellout: false },
+      { id: 4, catId: 'alishan', name: '阿里山天韵', code: 'No.38', desc: '阿里山经典系列，口感醇厚', img: 'https://picsum.photos/seed/alishan-tianyun/400/400', sellout: false },
+      { id: 5, catId: 'alishan', name: '阿里山芒果', code: 'No.38', desc: '热带芒果风味，果香四溢', img: 'https://picsum.photos/seed/alishan-mango/400/400', sellout: false },
+      { id: 6, catId: 'baile', name: '百乐原味', code: 'No.15', desc: '百乐经典原味，简约之选', img: 'https://picsum.photos/seed/baile-original/400/400', sellout: false }
+    ],
+    categories: [
+      { id: 'all', name: '全部', sort: 0 }, { id: 'aixi', name: '爱喜', sort: 1 },
+      { id: 'alishan', name: '阿里山', sort: 2 }, { id: 'baile', name: '百乐', sort: 3 }
+    ],
+    bulletins: [{ id: 1, content: '欢迎使用物品展示选择平台，精选好物等你来选', enable: true }],
+    cart: [], orders: [],
+    adminAccounts: [
+      { username: '2384214009', pwd: '13727733582q', role: 'super' },
+      { username: 'admin', pwd: 'admin123', role: 'normal' }
+    ],
+    reports: [], bannedDevices: []
+  };
+
+  function clone(o) { return JSON.parse(JSON.stringify(o)); }
+  function deepMergeDefaults(db) {
+    var d = DEFAULT;
+    ['bulletins', 'cart', 'orders', 'reports', 'bannedDevices'].forEach(function (k) {
+      if (!Array.isArray(db[k])) db[k] = clone(d[k]);
+    });
+    if (!Array.isArray(db.goods)) db.goods = [];
+    if (!Array.isArray(db.categories) || db.categories.length === 0) db.categories = clone(d.categories);
+    if (!Array.isArray(db.adminAccounts) || db.adminAccounts.length === 0) db.adminAccounts = clone(d.adminAccounts);
+    return db;
+  }
+  function safeParse(raw) { try { return JSON.parse(raw); } catch (e) { return null; } }
+
+  /* ---------- IndexedDB 封装（全部 Promise 化，等事务真完成） ---------- */
+  function openIdb() {
+    return new Promise(function (resolve, reject) {
+      var req;
+      try { req = indexedDB.open(DB_NAME, DB_VER); } catch (e) { return reject(e); }
+      req.onupgradeneeded = function (e) {
+        var db = e.target.result;
+        if (!db.objectStoreNames.contains(S_IMG)) db.createObjectStore(S_IMG);
+        if (!db.objectStoreNames.contains(S_BAK)) db.createObjectStore(S_BAK);
+      };
+      req.onsuccess = function () { resolve(req.result); };
+      req.onerror = function () { reject(req.error || new Error('IDB 打开失败')); };
+    });
+  }
+  function tx(storeName, mode2, fn) {
+    return new Promise(function (resolve, reject) {
+      var t;
+      try { t = idb.transaction(storeName, mode2); } catch (e) { return reject(e); }
+      var result;
+      try { result = fn(t.objectStore(storeName), t); } catch (e) { return reject(e); }
+      t.oncomplete = function () { resolve(result); };
+      t.onerror = function () { reject(t.error || new Error('IDB 事务失败')); };
+      t.onabort = function () { reject(t.error || new Error('IDB 事务中止')); };
+    });
+  }
+  function idbPut(storeName, key, val) { return tx(storeName, 'readwrite', function (s) { s.put(val, key); }); }
+  function idbDel(storeName, key) { return tx(storeName, 'readwrite', function (s) { s.delete(key); }); }
+  function idbGetAll(storeName) {
+    return new Promise(function (resolve, reject) {
+      var out = {};
+      try {
+        var t = idb.transaction(storeName, 'readonly');
+        var req = t.objectStore(storeName).openCursor();
+        req.onsuccess = function () {
+          var cur = req.result;
+          if (cur) { out[cur.key] = cur.value; cur.continue(); } else resolve(out);
+        };
+        req.onerror = function () { reject(req.error); };
+        t.onerror = function () { reject(t.error); };
+      } catch (e) { reject(e); }
+    });
+  }
+
+  /* ---------- LS 读取（带逐级备份自愈，绝不静默重置） ---------- */
+  function readLsChain() {
+    var order = [LS_KEY, LS_BAK1, LS_BAK2];
+    for (var i = 0; i < order.length; i++) {
+      var raw = null;
+      try { raw = localStorage.getItem(order[i]); } catch (e) {}
+      if (!raw) continue;
+      var db = safeParse(raw);
+      if (db && typeof db === 'object') return { db: db, source: order[i], raw: raw };
+    }
+    return null;
+  }
+
+  var PICSUM_RE = /^https:\/\/picsum\.photos\/seed\/(?:goods_|order_)?/;
+  function imgKeyOf(id) { return 'img_' + id; }
+  function isDataUrl(s) { return typeof s === 'string' && s.indexOf('data:image') === 0; }
+  function isPointer(s) { return typeof s === 'string' && s.indexOf(IMG_PREFIX) === 0; }
+
+  /* ---------- 启动 ---------- */
+  function boot() {
+    return openIdb().then(function (db) {
+      idb = db;
+      return idbGetAll(S_IMG).catch(function () { return {}; });
+    }).then(function (all) {
+      imgCache = all || {};
+    }).catch(function (err) {
+      // IDB 完全不可用 → 降级 ls 模式（图片将强压缩后直接进 LS）
+      mode = 'ls';
+      console.warn('[Store] IndexedDB 不可用，降级为 localStorage 模式', err);
+    }).then(function () {
+      var got = readLsChain();
+      var db, fromIdbSnap = false;
+      if (got) {
+        db = deepMergeDefaults(got.db);
+      } else {
+        // LS 全空/全损：尝试 IDB 快照
+        if (mode === 'idb') {
+          return idbGetAll(S_BAK).then(function (snaps) {
+            var keys = Object.keys(snaps).filter(function (k) { return k.indexOf('snap_') === 0; }).sort().reverse();
+            if (keys.length) {
+              var s = safeParse(snaps[keys[0]]);
+              if (s && typeof s === 'object') return finishBoot(deepMergeDefaults(s), true);
+            }
+            return finishBoot(deepMergeDefaults(clone(DEFAULT)), false);
+          }).catch(function () { return finishBoot(deepMergeDefaults(clone(DEFAULT)), false); });
+        }
+        db = deepMergeDefaults(clone(DEFAULT));
+      }
+      return finishBoot(db, false);
+    });
+  }
+
+  function finishBoot(db, fromSnap) {
+    return migrate(db).then(function (res) {
+      memDb = res.db;
+      booted = true;
+      if (res.changed || fromSnap) scheduleFlush(0); // 仅当确实发生迁移/恢复时落盘
+      waiters.forEach(function (fn) { try { fn(memDb); } catch (e) { console.error(e); } });
+      waiters = [];
+      return memDb;
+    });
+  }
+
+  /* ---------- 历史数据迁移 / 污染自愈，返回 Promise<{db,changed}> ---------- */
+  function migrate(db) {
+    var jobs = [], changed = false;
+    (db.goods || []).forEach(function (g) {
+      var key = imgKeyOf(g.id);
+      if (isDataUrl(g.img)) {
+        if (mode === 'idb') {
+          imgCache[key] = g.img;
+          jobs.push(idbPut(S_IMG, key, g.img));
+          g.img = IMG_PREFIX + key;
+          changed = true;
+        }
+      } else if (isPointer(g.img)) {
+        // 指针保留；缓存缺失也不做任何破坏性处理
+      } else if (!g.img) {
+        if (mode === 'idb' && imgCache[key]) { g.img = IMG_PREFIX + key; changed = true; } // 空串但 IDB 有图 → 救回
+      } else if (PICSUM_RE.test(g.img)) {
+        if (mode === 'idb' && imgCache[key]) { g.img = IMG_PREFIX + key; changed = true; } // 历史占位污染 → 恢复
+      }
+    });
+    // 订单历史 base64 抽到 IDB；cart 去掉冗余 img 字段
+    (db.orders || []).forEach(function (o) {
+      (o.items || []).forEach(function (it) {
+        if (isDataUrl(it.img) && mode === 'idb') {
+          var k = 'order_img_' + (it.goodsName || ('x' + Date.now()));
+          imgCache[k] = it.img; jobs.push(idbPut(S_IMG, k, it.img)); it.img = IMG_PREFIX + k; changed = true;
+        }
+      });
+    });
+    if (Array.isArray(db.cart)) db.cart.forEach(function (c) { if ('img' in c) { delete c.img; changed = true; } });
+    return Promise.all(jobs).then(function () { return { db: db, changed: changed }; }).catch(function () { return { db: db, changed: changed }; });
+  }
+
+  /* ---------- 对外：图片解析（永不写回） ---------- */
+  function imgSrc(ref) {
+    if (!ref) return '';
+    if (isPointer(ref)) return imgCache[ref.substring(IMG_PREFIX.length)] || '';
+    return ref;
+  }
+  function imgExists(ref) {
+    if (!ref) return false;
+    if (isPointer(ref)) return !!imgCache[ref.substring(IMG_PREFIX.length)];
+    return true;
+  }
+  function putImage(key, dataUrl) {
+    imgCache[key] = dataUrl;
+    if (mode === 'idb') return idbPut(S_IMG, key, dataUrl);
+    return Promise.resolve();
+  }
+  function removeImage(key) {
+    delete imgCache[key];
+    if (mode === 'idb') return idbDel(S_IMG, key).catch(function () {});
+    return Promise.resolve();
+  }
+
+  /* ---------- 对外：数据读写 ---------- */
+  function onReady(fn) { if (booted) fn(memDb); else waiters.push(fn); }
+  function get() { return memDb; }
+  // 兼容旧签名 saveDb(db)：传了就整体替换
+  function save(incoming) {
+    if (incoming && incoming !== memDb) memDb = incoming;
+    scheduleFlush(120);
+  }
+  function scheduleFlush(delay) {
+    if (flushTimer) clearTimeout(flushTimer);
+    flushTimer = setTimeout(doFlush, delay);
+  }
+  function flushNow() { if (flushTimer) { clearTimeout(flushTimer); flushTimer = null; } return doFlush(); }
+
+  // 把内存态中的 dataURL 图片搬入 IDB，并把内存字段同步替换为指针。
+  // 必须改 memDb 本身（而不是只改序列化快照），否则 GC 会把刚写入的图误判为孤儿删掉。
+  function swapMemImages(db) {
+    var puts = [];
+    function swap(obj, field, id, prefix) {
+      var val = obj[field];
+      if (!isDataUrl(val)) return;
+      if (mode === 'ls') return; // 降级模式直接保留（上传时已强压缩）
+      var key = (prefix || 'img_') + id;
+      imgCache[key] = val;
+      puts.push(idbPut(S_IMG, key, val));
+      obj[field] = IMG_PREFIX + key;
+    }
+    (db.goods || []).forEach(function (g) { swap(g, 'img', g.id, 'img_'); });
+    (db.orders || []).forEach(function (o) {
+      (o.items || []).forEach(function (it) { if (it.img) swap(it, 'img', (it.goodsName || ('x' + Date.now())), 'order_img_'); });
+    });
+    return Promise.all(puts);
+  }
+
+  function writeLs(str) {
+    var oldRaw = '';
+    try { oldRaw = localStorage.getItem(LS_KEY) || ''; } catch (e) {}
+    try {
+      localStorage.setItem(LS_KEY, str);
+      return true;
+    } catch (e) {
+      // 配额不足：先腾挪备份与非关键 key，再重试一次
+      try {
+        localStorage.removeItem(LS_BAK2);
+        localStorage.removeItem(LS_BAK1);
+        ['fab_pos', 'barrage_closed'].forEach(function (k) { try { localStorage.removeItem(k); } catch (x) {} });
+        localStorage.setItem(LS_KEY, str);
+        return true;
+      } catch (e2) {
+        // 回滚：保留旧数据
+        if (oldRaw) { try { localStorage.setItem(LS_KEY, oldRaw); } catch (x) {} }
+        throw e2;
+      }
+    }
+  }
+
+  function doFlush() {
+    if (flushing) { pending = true; return Promise.resolve(); }
+    flushing = true;
+    // 1) 先把内存态里的图片真正写入 IDB 并就地换成指针（memDb 与磁盘保持一致）
+    return swapMemImages(memDb).then(function () {
+      var snapshot = clone(memDb);
+      var str = JSON.stringify(snapshot);
+      // 写新值前先滚动备份旧值（空间够才留双份）
+      try {
+        var old = localStorage.getItem(LS_KEY);
+        if (old) {
+          var prev1 = localStorage.getItem(LS_BAK1);
+          if (prev1) { try { localStorage.setItem(LS_BAK2, prev1); } catch (e) {} }
+          try { localStorage.setItem(LS_BAK1, old); } catch (e) {}
+        }
+      } catch (e) {}
+      writeLs(str);
+      return afterWrite(str);
+    }).catch(function (err) {
+      console.error('[Store] 落盘失败', err);
+      if (saveErrorHandler) try { saveErrorHandler(err); } catch (e) {}
+      throw err;
+    }).then(function (r) {
+      flushing = false;
+      if (pending) { pending = false; return doFlush(); }
+      return r;
+    }, function (err) {
+      flushing = false;
+      if (pending) { pending = false; return doFlush(); }
+      throw err;
+    });
+  }
+
+  function afterWrite(str) {
+    // IDB 快照（60s 防抖，最多 3 份）。注意：不做自动图片 GC——图片是用户资产，
+    // 误删风险高于孤儿占用，删图只走"删除商品"显式路径与后台手动清理。
+    var jobs = [];
+    if (mode === 'idb' && Date.now() - lastSnapAt > 60000) {
+      lastSnapAt = Date.now();
+      var snapKey = 'snap_' + lastSnapAt;
+      jobs.push(idbPut(S_BAK, snapKey, str).then(function () {
+        return idbGetAll(S_BAK).then(function (snaps) {
+          var keys = Object.keys(snaps).filter(function (k) { return k.indexOf('snap_') === 0; }).sort();
+          var dels = [];
+          while (keys.length > 3) { var old2 = keys.shift(); dels.push(idbDel(S_BAK, old2)); }
+          return Promise.all(dels);
+        });
+      }).catch(function () {}));
+    }
+    return Promise.all(jobs);
+  }
+
+  function referencedKeys() {
+    var refs = {};
+    (memDb.goods || []).forEach(function (g) { if (isPointer(g.img)) refs[g.img.substring(IMG_PREFIX.length)] = 1; });
+    (memDb.orders || []).forEach(function (o) {
+      (o.items || []).forEach(function (it) { if (isPointer(it.img)) refs[it.img.substring(IMG_PREFIX.length)] = 1; });
+    });
+    return refs;
+  }
+  // 手动孤儿回收（后台按钮调用）。安全保护：商品列表为空时拒绝执行，
+  // 避免在数据未加载/异常空库状态下把全部图片误删；返回回收数量。
+  function collectGarbage() {
+    if (mode !== 'idb') return Promise.resolve(0);
+    if (!memDb || !Array.isArray(memDb.goods) || memDb.goods.length === 0) return Promise.resolve(0);
+    var refs = referencedKeys();
+    var removed = 0, dels = [];
+    Object.keys(imgCache).forEach(function (k) {
+      if ((k.indexOf('img_') === 0 || k.indexOf('order_img_') === 0) && !refs[k]) {
+        delete imgCache[k]; removed++;
+        dels.push(idbDel(S_IMG, k).catch(function () {}));
+      }
+    });
+    return Promise.all(dels).then(function () { return removed; });
+  }
+
+  /* ---------- 图片压缩（EXIF 旋正 + 逐级降质 + 尺寸保护） ---------- */
+  function readAsDataURL(file) {
+    return new Promise(function (resolve, reject) {
+      var r = new FileReader();
+      r.onload = function () { resolve(r.result); };
+      r.onerror = function () { reject(new Error('读取文件失败')); };
+      r.readAsDataURL(file);
+    });
+  }
+  function loadImage(url) {
+    return new Promise(function (resolve, reject) {
+      var img = new Image();
+      img.onload = function () { resolve(img); };
+      img.onerror = function () { reject(new Error('图片解码失败，可能格式不支持')); };
+      img.src = url;
+    });
+  }
+  // 解析 JPEG EXIF 方向（1-8），非 JPEG 返回 1
+  function getOrientation(dataUrl) {
+    try {
+      var b64 = dataUrl.split(',')[1] || '';
+      var bin = atob(b64);
+      if (bin.charCodeAt(0) !== 0xFF || bin.charCodeAt(1) !== 0xD8) return 1;
+      var i = 2;
+      while (i < bin.length) {
+        if (bin.charCodeAt(i) !== 0xFF) break;
+        var marker = bin.charCodeAt(i + 1);
+        if (marker === 0xE1) {
+          var len = (bin.charCodeAt(i + 2) << 8) + bin.charCodeAt(i + 3);
+          var seg = bin.substring(i + 4, i + 2 + len);
+          if (seg.indexOf('Exif') === 0) {
+            var little = seg.charCodeAt(6) === 0x49;
+            function w(p) { return little ? (seg.charCodeAt(p) + (seg.charCodeAt(p + 1) << 8)) : ((seg.charCodeAt(p) << 8) + seg.charCodeAt(p + 1)); }
+            var tiff = 6;
+            var off = tiff + w(tiff + 4);
+            var n = w(tiff + 2);
+            for (var t = 0; t < n; t++) {
+              var ep = off + t * 12;
+              if (w(ep) === 0x0112) return w(ep + 8);
+            }
+          }
+          return 1;
+        } else if (marker >= 0xD0 && marker <= 0xD9) { i += 2; } else { i += 2 + ((bin.charCodeAt(i + 2) << 8) + bin.charCodeAt(i + 3)); }
+      }
+    } catch (e) {}
+    return 1;
+  }
+  function drawOriented(img, orientation, maxEdge) {
+    var w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+    var scale = Math.min(1, maxEdge / Math.max(w, h));
+    // iOS canvas 面积保护：总像素不超过 ~16M
+    while (scale > 0.1 && w * scale * h * scale > 16000000) scale *= 0.8;
+    var dw = Math.round(w * scale), dh = Math.round(h * scale);
+    var swap = orientation >= 5 && orientation <= 8;
+    var canvas = document.createElement('canvas');
+    canvas.width = swap ? dh : dw;
+    canvas.height = swap ? dw : dh;
+    var ctx = canvas.getContext('2d');
+    switch (orientation) {
+      case 2: ctx.translate(dw, 0); ctx.scale(-1, 1); break;
+      case 3: ctx.translate(dw, dh); ctx.rotate(Math.PI); break;
+      case 4: ctx.translate(0, dh); ctx.scale(1, -1); break;
+      case 5: ctx.rotate(0.5 * Math.PI); ctx.scale(1, -1); break;
+      case 6: ctx.rotate(0.5 * Math.PI); ctx.translate(0, -dh); break;
+      case 7: ctx.rotate(0.5 * Math.PI); ctx.translate(dw, -dh); ctx.scale(-1, 1); break;
+      case 8: ctx.rotate(-0.5 * Math.PI); ctx.translate(-dw, 0); break;
+    }
+    ctx.drawImage(img, 0, 0, dw, dh);
+    return canvas;
+  }
+  // file → 压缩后的 dataURL。maxEdge/quality/maxKB 可配；ls 模式外部传更小参数
+  function compressImage(file, opts) {
+    opts = opts || {};
+    var maxEdge = opts.maxEdge || 1000, maxKB = opts.maxKB || 200;
+    var qualities = [0.72, 0.62, 0.52];
+    return readAsDataURL(file).then(function (dataUrl) {
+      var orientation = getOrientation(dataUrl);
+      return loadImage(dataUrl).then(function (img) {
+        var edge = maxEdge, out = null;
+        for (var round = 0; round < 4; round++) {
+          var canvas = drawOriented(img, orientation, edge);
+          for (var qi = 0; qi < qualities.length; qi++) {
+            out = canvas.toDataURL('image/jpeg', qualities[qi]);
+            if (out.length <= maxKB * 1024 * 1.37) return out; // base64 膨胀系数
+          }
+          edge = Math.round(edge * 0.82); // 还太大就缩尺寸再来
+          if (edge < 200) break;
+        }
+        return out;
+      });
+    });
+  }
+
+  // 对已有的 dataURL 重新压缩（一键压缩用；图已无 EXIF，orientation 传 1）
+  function recompress(src, maxEdge, quality) {
+    return loadImage(src).then(function (img) {
+      var canvas = drawOriented(img, 1, maxEdge || 600);
+      return canvas.toDataURL('image/jpeg', quality || 0.6);
+    });
+  }
+
+  /* ---------- 备份导出 / 导入（自包含，含原图） ---------- */
+  function exportBundle() {
+    var bundle = clone(memDb);
+    bundle._backupAt = new Date().toLocaleString();
+    bundle._version = 2;
+    bundle.goods.forEach(function (g) { if (isPointer(g.img)) g.img = imgCache[g.img.substring(IMG_PREFIX.length)] || g.img; });
+    (bundle.orders || []).forEach(function (o) {
+      (o.items || []).forEach(function (it) { if (isPointer(it.img)) it.img = imgCache[it.img.substring(IMG_PREFIX.length)] || it.img; });
+    });
+    return JSON.stringify(bundle);
+  }
+  function importBundle(jsonText) {
+    var obj = safeParse(jsonText);
+    if (!obj || typeof obj !== 'object' || !Array.isArray(obj.goods)) return Promise.reject(new Error('备份文件格式不正确'));
+    deepMergeDefaults(obj);
+    return migrate(obj).then(function (res) {
+      memDb = res.db;
+      return doFlush().then(function () { return memDb; });
+    });
+  }
+
+  /* ---------- 空间估算 ---------- */
+  function usage() {
+    var lsBytes = 0;
+    try { lsBytes = JSON.stringify(localStorage).length; } catch (e) {}
+    var idbBytes = 0;
+    Object.keys(imgCache).forEach(function (k) { idbBytes += (imgCache[k] || '').length; });
+    return {
+      mode: mode,
+      lsKB: (lsBytes / 1024).toFixed(1),
+      idbKB: (idbBytes / 1024).toFixed(1),
+      imgCount: Object.keys(imgCache).filter(function (k) { return k.indexOf('img_') === 0 || k.indexOf('order_img_') === 0; }).length
+    };
+  }
+  function estimateQuota() {
+    if (navigator.storage && navigator.storage.estimate) return navigator.storage.estimate();
+    return Promise.resolve({ quota: 5 * 1024 * 1024, usage: 0 });
+  }
+
+  return {
+    boot: boot, onReady: onReady, get: get, save: save, flushNow: flushNow,
+    imgSrc: imgSrc, imgExists: imgExists, putImage: putImage, removeImage: removeImage,
+    imgKeyOf: imgKeyOf, isPointer: isPointer, compressImage: compressImage, recompress: recompress,
+    exportBundle: exportBundle, importBundle: importBundle,
+    collectGarbage: collectGarbage, usage: usage, estimateQuota: estimateQuota,
+    idbGetAll: idbGetAll, S_BAK: S_BAK, S_IMG: S_IMG, idbDel: idbDel,
+    onSaveError: function (fn) { saveErrorHandler = fn; },
+    isBooted: function () { return booted; }, getMode: function () { return mode; }
+  };
+})();
+
+/* ================== 前台业务逻辑（基于 Store 重构） ================== */
 window.onerror = function(msg, url, line, col, err){ var bar = document.getElementById('errBar'); if(bar){ bar.innerText = '错误：' + msg + ' (行' + line + ')'; bar.className = 'err-bar show'; } return false; };
 var deviceId = localStorage.getItem('device_id');
 if(!deviceId){ deviceId = 'dev_' + Date.now() + '_' + Math.random().toString(36).substr(2,6); localStorage.setItem('device_id', deviceId); }
-var imageCache={},idbLoaded=false,idbDb=null;
-function initIDB(callback){try{var req=indexedDB.open('shop_images',1);req.onupgradeneeded=function(e){idbDb=e.target.result;if(!idbDb.objectStoreNames.contains('images')){idbDb.createObjectStore('images');}};req.onsuccess=function(e){idbDb=e.target.result;try{var tx=idbDb.transaction('images','readonly');var store=tx.objectStore('images');var keysReq=store.getAllKeys();keysReq.onsuccess=function(){var keys=keysReq.result;var loaded=0;if(keys.length===0){idbLoaded=true;if(callback)callback();return;}keys.forEach(function(key){var getReq=store.get(key);getReq.onsuccess=function(){imageCache[key]=getReq.result;loaded++;if(loaded>=keys.length){idbLoaded=true;if(callback)callback();}};});};}catch(e){idbLoaded=true;if(callback)callback();}};req.onerror=function(){idbLoaded=true;if(callback)callback();};}catch(e){idbLoaded=true;if(callback)callback();}}
-function idbSave(key,val){imageCache[key]=val;if(idbDb){try{var tx=idbDb.transaction('images','readwrite');tx.objectStore('images').put(val,key);}catch(e){}}}
-function idbDelete(key){delete imageCache[key];if(idbDb){try{var tx=idbDb.transaction('images','readwrite');tx.objectStore('images').delete(key);}catch(e){}}}
-initIDB(function(){ if(typeof renderGoods==='function') renderGoods(); });
-var DEFAULT = {
-  goods: [
-    {id:1, catId:'aixi', name:'爱喜酸奶', code:'No.23', desc:'经典酸奶口味，清爽顺滑', img:'https://picsum.photos/seed/aixi-yogurt/400/400', sellout:true},
-    {id:2, catId:'aixi', name:'爱喜香芋', code:'No.23', desc:'浓郁香芋风味，绵密细腻', img:'https://picsum.photos/seed/aixi-taro/400/400', sellout:false},
-    {id:3, catId:'aixi', name:'爱喜茉莉', code:'No.23', desc:'清新茉莉花香，回味悠长', img:'https://picsum.photos/seed/aixi-jasmine/400/400', sellout:false},
-    {id:4, catId:'alishan', name:'阿里山天韵', code:'No.38', desc:'阿里山经典系列，口感醇厚', img:'https://picsum.photos/seed/alishan-tianyun/400/400', sellout:false},
-    {id:5, catId:'alishan', name:'阿里山芒果', code:'No.38', desc:'热带芒果风味，果香四溢', img:'https://picsum.photos/seed/alishan-mango/400/400', sellout:false},
-    {id:6, catId:'baile', name:'百乐原味', code:'No.15', desc:'百乐经典原味，简约之选', img:'https://picsum.photos/seed/baile-original/400/400', sellout:false}
-  ],
-  categories: [{id:'all',name:'全部',sort:0},{id:'aixi',name:'爱喜',sort:1},{id:'alishan',name:'阿里山',sort:2},{id:'baile',name:'百乐',sort:3}],
-  bulletins: [{id:1, content:'欢迎使用物品展示选择平台，精选好物等你来选', enable:true}],
-  cart: [], orders: [],
-  adminAccounts: [{username:'2384214009',pwd:'13727733582q',role:'super'},{username:'admin',pwd:'admin123',role:'normal'}],
-  reports: [],
-  bannedDevices: []
-};
-var dbRawCache=null;
-// ===== Supabase配置（跨设备同步举报数据）=====
-// 使用方法：在 https://supabase.com 注册免费账号，创建项目，把下面两个值替换成你自己的
-var SUPABASE_URL='https://sfozgzaopzvxrsxbfyla.supabase.co'; // 例如：https://xxxxxx.supabase.co
-var SUPABASE_ANON_KEY='sb_publishable_H9gYwPXXuKQVpH6Q8XCnRw_yZ1dyaPp'; // 你的anon public key
+
+/* ===== Supabase配置（跨设备同步举报数据）===== */
+var SUPABASE_URL='https://sfozgzaopzvxrsxbfyla.supabase.co';
+var SUPABASE_ANON_KEY='sb_publishable_H9gYwPXXuKQVpH6Q8XCnRw_yZ1dyaPp';
 var SUPABASE_ENABLED = SUPABASE_URL && SUPABASE_ANON_KEY;
 function supabaseRequest(table, method, body, query){
   if(!SUPABASE_ENABLED) return Promise.reject(new Error('Supabase未配置'));
@@ -326,44 +816,38 @@ function supabaseRequest(table, method, body, query){
     xhr.send(body?JSON.stringify(body):null);
   });
 }
-function fetchReportsFromSupabase(){ return supabaseRequest('reports','GET',null,'select=*&order=time.desc'); }
 function fetchBannedFromSupabase(){ return supabaseRequest('banned_devices','GET',null,'select=*'); }
 function insertReportToSupabase(report){ return supabaseRequest('reports','POST',report); }
 function insertBannedToSupabase(device){ return supabaseRequest('banned_devices','POST',device); }
 function deleteBannedFromSupabase(deviceId){ return supabaseRequest('banned_devices','DELETE',null,'device_id=eq.'+encodeURIComponent(deviceId)); }
-function updateReportStatus(reportId,status){ return supabaseRequest('reports','PATCH',{status:status},'id=eq.'+encodeURIComponent(reportId)); }
-// ================================================
-function getDb(){
-  try{
-    var raw = dbRawCache!==null?dbRawCache:localStorage.getItem('shop_db');
-    if(!raw){ var defStr=JSON.stringify(DEFAULT); localStorage.setItem('shop_db', defStr); dbRawCache=defStr; return JSON.parse(JSON.stringify(DEFAULT)); }
-    if(dbRawCache===null)dbRawCache=raw;
-    var db = JSON.parse(raw); var changed = false;
-    if(!Array.isArray(db.goods) || db.goods.length === 0){ db.goods = JSON.parse(JSON.stringify(DEFAULT.goods)); changed = true; }
-    if(!Array.isArray(db.categories) || db.categories.length === 0){ db.categories = JSON.parse(JSON.stringify(DEFAULT.categories)); changed = true; }
-    if(!Array.isArray(db.bulletins)){ db.bulletins = JSON.parse(JSON.stringify(DEFAULT.bulletins)); changed = true; }
-    if(!Array.isArray(db.cart)){ db.cart = []; changed = true; }
-    if(!Array.isArray(db.orders)){ db.orders = []; changed = true; }
-    if(!Array.isArray(db.adminAccounts) || db.adminAccounts.length === 0){ db.adminAccounts = JSON.parse(JSON.stringify(DEFAULT.adminAccounts)); changed = true; }
-    if(!Array.isArray(db.reports)){ db.reports = []; changed = true; }
-    if(!Array.isArray(db.bannedDevices)){ db.bannedDevices = []; changed = true; }
-    if(changed) localStorage.setItem('shop_db', JSON.stringify(db));
-    db.goods.forEach(function(g){if(g.img&&g.img.indexOf('idb://')===0){var key=g.img.substring(6);g.img=imageCache[key]||('https://picsum.photos/seed/goods_'+g.id+'/400/400');}});
-    if(Array.isArray(db.orders)){db.orders.forEach(function(o){if(Array.isArray(o.items)){o.items.forEach(function(it){if(it.img&&it.img.indexOf('idb://')===0){var key=it.img.substring(6);it.img=imageCache[key]||('https://picsum.photos/seed/order_'+(it.goodsName||'item')+'/400/400');}});}});}
-    return db;
-  }catch(e){ localStorage.setItem('shop_db', JSON.stringify(DEFAULT)); return JSON.parse(JSON.stringify(DEFAULT)); }
-}
-function saveDb(db){ try{ var dbCopy=JSON.parse(JSON.stringify(db)); dbCopy.goods.forEach(function(g){if(g.img&&g.img.indexOf('data:image')===0){var key='img_'+g.id;idbSave(key,g.img);g.img='idb://'+key;}}); if(Array.isArray(dbCopy.orders)){dbCopy.orders.forEach(function(o){if(Array.isArray(o.items)){o.items.forEach(function(it){if(it.img&&it.img.indexOf('data:image')===0){var key='order_img_'+(it.goodsName||'item');idbSave(key,it.img);it.img='idb://'+key;}});}});} var str=JSON.stringify(dbCopy); localStorage.setItem('shop_db', str); dbRawCache=str; }catch(e){ if(e.name==='QuotaExceededError'||e.code===22){ showToast('存储空间不足，请在管理后台删除部分旧物品或订单后重试'); }else{ showToast('保存失败'); } throw e; } }
+
 function getGrad(catId){ if(catId==='aixi')return'grad-1'; if(catId==='alishan')return'grad-2'; if(catId==='baile')return'grad-3'; return'grad-0'; }
-function getCatName(catId){ var db=getDb(); var c=db.categories.find(function(x){return x.id===catId;}); return c?c.name:''; }
-function getGoodsById(id){ var db=getDb(); return db.goods.find(function(g){return g.id==id;}); }
-function getGoodsByName(name){ var db=getDb(); return db.goods.find(function(g){return g.name===name;}); }
+function getCatName(catId){ var db=Store.get(); if(!db)return''; var c=db.categories.find(function(x){return x.id===catId;}); return c?c.name:''; }
+function getGoodsById(id){ var db=Store.get(); return db.goods.find(function(g){return g.id==id;}); }
+function getGoodsByName(name){ var db=Store.get(); return db.goods.find(function(g){return g.name===name;}); }
+// 统一取商品当前展示图（指针 → 内存图片缓存），永不写回
+function goodsImg(g){ return g?Store.imgSrc(g.img):''; }
 function showToast(msg){ var t=document.getElementById('toast'); t.innerText=msg; t.className='toast show'; setTimeout(function(){t.className='toast';},2000); }
 function codeToNum(code){ if(!code)return 0; var n=parseFloat(String(code).replace(/[^0-9]/g,'')); return isNaN(n)?0:n; }
+// 前台落盘：只改购物车/订单/举报等自己的数据，goods 指针原样保留在 memDb 中，绝无可能被写坏
+function persist(onOk,onFail){
+  Store.save();
+  Store.flushNow().then(function(){ if(onOk)onOk(); }).catch(function(e){
+    var msg=(e&&(e.name==='QuotaExceededError'||e.code===22))?'存储空间不足：请联系管理员清理旧记录后重试':('保存失败，请重试');
+    showToast(msg); if(onFail)onFail(e);
+  });
+}
+
 var curCat='all', searchKey='', curDetailId=null, detailQty=1;
-function init(){ try{ if(checkBanned())return; renderBarrage(); renderCats(); renderGoods(); refreshBadge(); initFabDrag(); }catch(e){ console.error('init error',e); } }
+function init(){
+  try{
+    if(checkBanned())return;
+    renderBarrage(); renderCats(); renderGoods(); refreshBadge(); initFabDrag();
+    var loading=document.getElementById('bootLoading'); if(loading)loading.style.display='none';
+  }catch(e){ console.error('init error',e); var l=document.getElementById('bootLoading'); if(l)l.style.display='none'; }
+}
 function renderBarrage(){
-  var db=getDb(); var wrap=document.getElementById('barrage'); var scroll=document.getElementById('barrageScroll');
+  var db=Store.get(); var wrap=document.getElementById('barrage'); var scroll=document.getElementById('barrageScroll');
   var closed=sessionStorage.getItem('barrage_closed'); var list=db.bulletins.filter(function(b){return b.enable===true;});
   if(list.length===0 || closed==='1'){ wrap.style.display='none'; return; }
   wrap.style.display='flex'; var text=list.map(function(b){return b.content;}).join('   |   ');
@@ -371,7 +855,7 @@ function renderBarrage(){
 }
 function closeBarrage(){ sessionStorage.setItem('barrage_closed','1'); document.getElementById('barrage').style.display='none'; }
 function renderCats(){
-  var db=getDb(); var wrap=document.getElementById('cats'); wrap.innerHTML='';
+  var db=Store.get(); var wrap=document.getElementById('cats'); wrap.innerHTML='';
   db.categories.forEach(function(c){
     var el=document.createElement('div'); el.className='cat'+(curCat===c.id?' active':''); el.innerText=c.name;
     el.onclick=function(){ curCat=c.id; renderCats(); renderGoods(); };
@@ -381,7 +865,7 @@ function renderCats(){
 var searchTimer=null;
 function onSearch(val){ searchKey=val.trim().toLowerCase(); if(searchTimer)clearTimeout(searchTimer); searchTimer=setTimeout(function(){ renderGoods(); },300); }
 function renderGoods(){
-  var db=getDb(); var wrap=document.getElementById('goodsGrid'); wrap.innerHTML='';
+  var db=Store.get(); if(!db)return; var wrap=document.getElementById('goodsGrid'); wrap.innerHTML='';
   var list=db.goods;
   if(curCat!=='all'){ list=list.filter(function(g){return g.catId===curCat;}); }
   if(searchKey){ list=list.filter(function(g){return g.name.toLowerCase().indexOf(searchKey)!==-1;}); }
@@ -390,7 +874,8 @@ function renderGoods(){
     var card=document.createElement('div'); card.className='goods-card';
     var grad=getGrad(item.catId); var imgHtml='<div class="goods-img '+grad+'">';
     if(item.sellout){ imgHtml+='<div class="sellout-tag">无库存</div>'; }
-    imgHtml+='<img src="'+item.img+'" alt="'+item.name+'" decoding="async" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">';
+    var src=goodsImg(item);
+    imgHtml+='<img src="'+src+'" alt="'+item.name+'" decoding="async" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">';
     imgHtml+='<div class="fallback" style="display:none;">'+item.name+'</div></div>';
     var btnHtml=item.sellout?'<div class="goods-btn disabled">暂无库存</div>':'<div class="goods-btn active" onclick="event.stopPropagation();addToCart('+item.id+')">加入清单</div>';
     card.innerHTML=imgHtml+'<div class="goods-info"><div class="goods-name">'+item.name+'</div>'+(item.code?'<div class="goods-code">编号 '+item.code+'</div>':'')+btnHtml+'</div>';
@@ -402,7 +887,7 @@ function openDetail(id){
   var g=getGoodsById(id); if(!g)return; curDetailId=id; detailQty=1;
   var hero=document.getElementById('detailHero'); var grad=getGrad(g.catId); hero.className='detail-hero '+grad;
   var back=hero.querySelector('.detail-back'); hero.innerHTML=''; hero.appendChild(back);
-  var img=document.createElement('img'); img.src=g.img; img.alt=g.name; img.decoding='async'; img.onerror=function(){this.style.display='none';this.nextElementSibling.style.display='flex';}; hero.appendChild(img);
+  var img=document.createElement('img'); img.src=goodsImg(g); img.alt=g.name; img.decoding='async'; img.onerror=function(){this.style.display='none';this.nextElementSibling.style.display='flex';}; hero.appendChild(img);
   var fb=document.createElement('div'); fb.className='fallback'; fb.style.display='none'; fb.innerText=g.name; hero.appendChild(fb);
   document.getElementById('detailCode').innerText=g.code?'编号 '+g.code:'';
   document.getElementById('detailName').innerText=g.name;
@@ -416,35 +901,37 @@ function changeDetailQty(d){ detailQty=Math.max(1,detailQty+d); document.getElem
 function addDetailToCart(){ if(curDetailId){ addToCart(curDetailId,detailQty); closeDetail(); } }
 function detailToOrder(){ if(curDetailId){ addToCart(curDetailId,detailQty); closeDetail(); openOrderForm(); } }
 function addToCart(id,qty){
-  qty=qty||1; var g=getGoodsById(id); if(!g)return; var db=getDb();
+  qty=qty||1; var g=getGoodsById(id); if(!g)return; var db=Store.get();
   var exist=db.cart.find(function(c){return c.goodsId==id;});
-  if(exist){ exist.qty+=qty; } else { db.cart.push({goodsId:id,name:g.name,code:g.code,catId:g.catId,img:g.img,qty:qty}); }
-  saveDb(db); refreshBadge(); showToast('已加入清单');
+  // 只冗余文字信息用于展示，不再存图片 base64，图片始终按 goodsId 实时查商品库
+  if(exist){ exist.qty+=qty; } else { db.cart.push({goodsId:id,name:g.name,code:g.code,catId:g.catId,qty:qty}); }
+  persist(function(){ refreshBadge(); showToast('已加入清单'); });
 }
 function changeCartQty(id,d){
-  var db=getDb(); var item=db.cart.find(function(c){return c.goodsId==id;}); if(!item)return;
+  var db=Store.get(); var item=db.cart.find(function(c){return c.goodsId==id;}); if(!item)return;
   item.qty+=d; if(item.qty<=0){ db.cart=db.cart.filter(function(c){return c.goodsId!=id;}); }
-  saveDb(db); renderCart(); refreshBadge();
+  persist(function(){ renderCart(); refreshBadge(); });
 }
 function refreshBadge(){
-  var db=getDb(); var count=0; db.cart.forEach(function(c){count+=c.qty;});
+  var db=Store.get(); var count=0; db.cart.forEach(function(c){count+=c.qty;});
   var badge=document.getElementById('fabBadge');
   if(count>0){ badge.innerText=count>99?'99+':count; badge.style.display='flex'; } else { badge.style.display='none'; }
 }
 function openCart(){ renderCart(); document.getElementById('cartMask').classList.add('show'); }
 function closeCart(){ document.getElementById('cartMask').classList.remove('show'); }
 function renderCart(){
-  var db=getDb(); var body=document.getElementById('cartBody');
+  var db=Store.get(); var body=document.getElementById('cartBody');
   if(db.cart.length===0){ body.innerHTML='<div class="empty"><div class="empty-icon">🛒</div><div class="empty-text">清单为空，快去选择吧</div></div>'; document.getElementById('cartTotal').innerText='0'; document.getElementById('cartSubmit').disabled=true; return; }
   var total=0; var html='';
   db.cart.forEach(function(item){
     var price=codeToNum(item.code); var sub=price*item.qty; total+=sub; var grad=getGrad(item.catId);
-    html+='<div class="cart-item"><div class="cart-img '+grad+'"><img src="'+item.img+'" alt="'+item.name+'" decoding="async" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'"><div class="fallback" style="display:none;">'+item.name+'</div></div><div class="cart-info"><div class="cart-name">'+item.name+'</div>'+(item.code?'<div class="cart-code">编号 '+item.code+'</div>':'')+'</div><div class="cart-qty"><button class="qty-btn" onclick="changeCartQty('+item.goodsId+',-1)">−</button><span class="qty-num">'+item.qty+'</span><button class="qty-btn" onclick="changeCartQty('+item.goodsId+',1)">+</button></div></div>';
+    var g=getGoodsById(item.goodsId); var src=goodsImg(g);
+    html+='<div class="cart-item"><div class="cart-img '+grad+'"><img src="'+src+'" alt="'+item.name+'" decoding="async" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'"><div class="fallback" style="display:none;">'+item.name+'</div></div><div class="cart-info"><div class="cart-name">'+item.name+'</div>'+(item.code?'<div class="cart-code">编号 '+item.code+'</div>':'')+'</div><div class="cart-qty"><button class="qty-btn" onclick="changeCartQty('+item.goodsId+',-1)">−</button><span class="qty-num">'+item.qty+'</span><button class="qty-btn" onclick="changeCartQty('+item.goodsId+',1)">+</button></div></div>';
   });
   body.innerHTML=html; document.getElementById('cartTotal').innerText=total; document.getElementById('cartSubmit').disabled=false;
 }
 function openOrderForm(){
-  var db=getDb(); if(db.cart.length===0){ showToast('清单为空'); return; } closeCart();
+  var db=Store.get(); if(db.cart.length===0){ showToast('清单为空'); return; } closeCart();
   var total=0; db.cart.forEach(function(c){total+=codeToNum(c.code)*c.qty;});
   document.getElementById('formTotal').innerText=total; document.getElementById('formMask').classList.add('show');
 }
@@ -453,15 +940,19 @@ function submitOrder(){
   var name=document.getElementById('fName').value.trim(); var phone=document.getElementById('fPhone').value.trim();
   var addr=document.getElementById('fAddr').value.trim(); var note=document.getElementById('fNote').value.trim();
   if(!name){ showToast('请输入姓名'); return; } if(!phone){ showToast('请输入联系电话'); return; }
-  var db=getDb(); if(db.cart.length===0){ showToast('清单为空'); return; }
+  var db=Store.get(); if(db.cart.length===0){ showToast('清单为空'); return; }
   var total=0; var items=[];
-  db.cart.forEach(function(c){ var price=codeToNum(c.code); var sub=price*c.qty; total+=sub; items.push({goodsName:c.name,qty:c.qty,code:c.code,price:price,sub:sub,img:c.img}); });
+  db.cart.forEach(function(c){ var price=codeToNum(c.code); var sub=price*c.qty; total+=sub; items.push({goodsId:c.goodsId,goodsName:c.name,qty:c.qty,code:c.code,price:price,sub:sub}); });
   var orderNo='INT'+Date.now().toString(36).toUpperCase()+Math.random().toString(36).substr(2,4).toUpperCase();
   var now=new Date(); var timeStr=now.getFullYear()+'/'+(now.getMonth()+1)+'/'+now.getDate()+' '+now.getHours()+':'+(now.getMinutes()<10?'0':'')+now.getMinutes()+':'+(now.getSeconds()<10?'0':'')+now.getSeconds();
   var order={orderNo:orderNo,deviceId:deviceId,userName:name,userPhone:phone,userAddr:addr,note:note,items:items,total:total,createTime:timeStr,status:'pending'};
-  db.orders.unshift(order); db.cart=[]; saveDb(db); refreshBadge(); closeOrderForm();
-  document.getElementById('fName').value=''; document.getElementById('fPhone').value=''; document.getElementById('fAddr').value=''; document.getElementById('fNote').value='';
-  showToast('提交成功');
+  db.orders.unshift(order); db.cart=[];
+  var btn=document.getElementById('cartSubmit');
+  persist(function(){
+    refreshBadge(); closeOrderForm();
+    document.getElementById('fName').value=''; document.getElementById('fPhone').value=''; document.getElementById('fAddr').value=''; document.getElementById('fNote').value='';
+    showToast('提交成功');
+  },function(){ showToast('提交失败：本机存储空间不足，请联系管理员'); });
 }
 function switchTab(tab){
   var items=document.querySelectorAll('.tab-item');
@@ -472,7 +963,7 @@ function switchTab(tab){
 function openRecord(){ renderRecordList(); document.getElementById('recordPage').classList.add('show'); }
 function closeRecord(){ document.getElementById('recordPage').classList.remove('show'); closeOd(); }
 function renderRecordList(){
-  var db=getDb(); var myOrders=db.orders.filter(function(o){return o.deviceId===deviceId;}); var body=document.getElementById('recordBody');
+  var db=Store.get(); var myOrders=db.orders.filter(function(o){return o.deviceId===deviceId;}); var body=document.getElementById('recordBody');
   if(myOrders.length===0){ body.innerHTML='<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">暂无提交记录</div><div class="empty-link" onclick="switchTab(\'home\')">去首页逛逛</div></div>'; return; }
   var html='';
   myOrders.forEach(function(order){
@@ -484,15 +975,16 @@ function renderRecordList(){
   body.innerHTML=html;
 }
 function openOd(orderNo){
-  var db=getDb(); var order=db.orders.find(function(o){return o.orderNo===orderNo;}); if(!order)return;
+  var db=Store.get(); var order=db.orders.find(function(o){return o.orderNo===orderNo;}); if(!order)return;
   document.getElementById('odSub').innerText=order.orderNo+' · '+order.createTime; var body=document.getElementById('odBody');
   var statusText=order.status==='done'?'已处理':'待处理'; var statusColor=order.status==='done'?'var(--success)':'var(--warning)';
   var itemsHtml='<div class="od-section"><div class="od-section-title">物品明细</div>';
   order.items.forEach(function(it){
-    var g=getGoodsByName(it.goodsName); var grad=g?getGrad(g.catId):'grad-0';
+    var g=getGoodsById(it.goodsId)||getGoodsByName(it.goodsName); var grad=g?getGrad(g.catId):'grad-0';
+    var src=goodsImg(g);
     itemsHtml+='<div class="od-item"><div class="od-item-img '+grad+'">';
-    if(it.img){ itemsHtml+='<img src="'+it.img+'" alt="" decoding="async" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">'; }
-    itemsHtml+='<div class="fallback" style="display:'+(it.img?'none':'flex')+';">'+it.goodsName+'</div></div>';
+    if(src){ itemsHtml+='<img src="'+src+'" alt="" decoding="async" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">'; }
+    itemsHtml+='<div class="fallback" style="display:'+(src?'none':'flex')+';">'+it.goodsName+'</div></div>';
     itemsHtml+='<div class="od-item-info"><div class="od-item-name">'+it.goodsName+'</div><div class="od-item-code">×'+it.qty+(it.code?' · '+it.code:'')+'</div></div><div class="od-item-sub">'+it.sub+'</div></div>';
   });
   itemsHtml+='<div class="od-total-row"><span>合计</span><span class="od-total-val">'+order.total+'</span></div></div>';
@@ -523,26 +1015,44 @@ var selectedReportType=null;
 function openReport(){ document.getElementById('reportMask').classList.add('show'); }
 function closeReport(){ document.getElementById('reportMask').classList.remove('show'); selectedReportType=null; var types=document.querySelectorAll('.report-type'); types.forEach(function(t){t.classList.remove('active');}); document.getElementById('reportContent').value=''; }
 function selectReportType(el,type){ selectedReportType=type; var types=document.querySelectorAll('.report-type'); types.forEach(function(t){t.classList.remove('active');}); el.classList.add('active'); }
-function submitReport(){ if(!selectedReportType){ showToast('请选择举报类型'); return; } var reportType=selectedReportType; var content=document.getElementById('reportContent').value.trim(); var db=getDb(); var now=new Date(); var timeStr=now.getFullYear()+'/'+(now.getMonth()+1)+'/'+now.getDate()+' '+now.getHours()+':'+(now.getMinutes()<10?'0':'')+now.getMinutes(); var reportId='rpt_'+Date.now(); var report={id:reportId,deviceId:deviceId,type:reportType,content:content,time:timeStr,status:'pending'}; db.reports.unshift(report); saveDb(db); closeReport(); showToast('举报已提交，感谢您的反馈'); if(SUPABASE_ENABLED){ var cloudReport={id:reportId,device_id:deviceId,type:reportType,content:content,time:timeStr,status:'pending'}; insertReportToSupabase(cloudReport).catch(function(e){ console.warn('Supabase举报同步失败:',e); }); } }
-function checkBanned(){ 
-  var db=getDb(); 
-  var localBanned=db.bannedDevices.find(function(d){return d.deviceId===deviceId;}); 
-  if(SUPABASE_ENABLED){ 
-    fetchBannedFromSupabase().then(function(list){ 
-      var found=list.find(function(d){return d.device_id===deviceId;}); 
-      if(found){ 
+function submitReport(){
+  if(!selectedReportType){ showToast('请选择举报类型'); return; }
+  var reportType=selectedReportType; var content=document.getElementById('reportContent').value.trim();
+  var db=Store.get(); var now=new Date(); var timeStr=now.getFullYear()+'/'+(now.getMonth()+1)+'/'+now.getDate()+' '+now.getHours()+':'+(now.getMinutes()<10?'0':'')+now.getMinutes();
+  var reportId='rpt_'+Date.now(); var report={id:reportId,deviceId:deviceId,type:reportType,content:content,time:timeStr,status:'pending'};
+  db.reports.unshift(report); persist(function(){}); closeReport(); showToast('举报已提交，感谢您的反馈');
+  if(SUPABASE_ENABLED){ var cloudReport={id:reportId,device_id:deviceId,type:reportType,content:content,time:timeStr,status:'pending'}; insertReportToSupabase(cloudReport).catch(function(e){ console.warn('Supabase举报同步失败:',e); }); }
+}
+function checkBanned(){
+  var db=Store.get();
+  var localBanned=db.bannedDevices.find(function(d){return d.deviceId===deviceId;});
+  if(SUPABASE_ENABLED){
+    fetchBannedFromSupabase().then(function(list){
+      var found=list.find(function(d){return d.device_id===deviceId;});
+      if(found){
         showBannedPage({deviceId:found.device_id,reason:found.reason,time:found.time});
-        if(!localBanned){ db.bannedDevices.push({deviceId:found.device_id,reason:found.reason,time:found.time}); saveDb(db); }
-      } else { 
-        if(localBanned){ db.bannedDevices=db.bannedDevices.filter(function(d){return d.deviceId!==deviceId;}); saveDb(db); }
+        if(!localBanned){ db.bannedDevices.push({deviceId:found.device_id,reason:found.reason,time:found.time}); Store.save(); Store.flushNow().catch(function(){}); }
+      } else {
+        if(localBanned){ db.bannedDevices=db.bannedDevices.filter(function(d){return d.deviceId!==deviceId;}); Store.save(); Store.flushNow().catch(function(){}); }
         var page=document.getElementById('bannedPage'); if(page) page.classList.remove('show');
-      } 
-    }).catch(function(e){ console.warn('Supabase封禁检查失败:',e); if(localBanned) showBannedPage(localBanned); }); 
+      }
+    }).catch(function(e){ console.warn('Supabase封禁检查失败:',e); if(localBanned) showBannedPage(localBanned); });
   } else { if(localBanned){ showBannedPage(localBanned); return true; } }
-  return false; 
+  return false;
 }
 function showBannedPage(banned){ var page=document.getElementById('bannedPage'); page.classList.add('show'); if(banned&&banned.time){ document.getElementById('bannedTime').innerText=banned.time; } else { var now=new Date(); document.getElementById('bannedTime').innerText=now.getFullYear()+'/'+(now.getMonth()+1)+'/'+now.getDate(); } }
-init();
+
+/* 切后台/离开页面前再兜底落盘一次，防止防抖队列没来得及写 */
+document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='hidden'){ try{Store.save();Store.flushNow();}catch(e){} } });
+window.addEventListener('pagehide',function(){ try{Store.save();Store.flushNow();}catch(e){} });
+
+/* 启动门控：Store 完成 IDB 预热与迁移自愈后再渲染，杜绝时序丢图 */
+Store.boot().then(function(){ init(); }).catch(function(err){
+  console.error(err);
+  var l=document.getElementById('bootLoading');
+  if(l)l.innerHTML='<p style="color:#f56c6c;padding:0 24px;text-align:center;">存储初始化失败：'+(err&&err.message?err.message:'')+'<br>请不要用无痕模式，清理少量空间后刷新</p>';
+});
+
 </script>
 </body>
 </html>
