@@ -303,6 +303,9 @@ var Store = (function () {
   var memDb = null, booted = false;
   var waiters = [];
   var flushTimer = null, flushing = false, pending = false;
+  var flushWaiters = [];              // flushing 期间到达的 flushNow 调用者，全部等本轮真正落盘后再回调
+  var dirty = false;                  // 内存是否有尚未落盘的修改（防止冻结旧页面 pagehide 盲目覆盖新数据）
+  var extReloadWaiters = [];          // 外部页面（其他标签/bfcache 恢复）数据变化后的重渲染回调
   var lastSnapAt = 0, saveErrorHandler = null;
 
   var DEFAULT = {
@@ -552,6 +555,7 @@ var Store = (function () {
   // 兼容旧签名 saveDb(db)：传了就整体替换
   function save(incoming) {
     if (incoming && incoming !== memDb) memDb = incoming;
+    dirty = true;
     scheduleFlush(120);
   }
   function scheduleFlush(delay) {
@@ -559,6 +563,37 @@ var Store = (function () {
     flushTimer = setTimeout(doFlush, delay);
   }
   function flushNow() { if (flushTimer) { clearTimeout(flushTimer); flushTimer = null; } return doFlush(); }
+  // 仅在确有未落盘修改时才写，避免 bfcache 冻结的旧页面在 pagehide 时用旧内存覆盖新数据
+  function flushIfDirty() { return dirty ? flushNow() : Promise.resolve(); }
+  function isDirty() { return dirty; }
+  // 从磁盘重新读取最新数据替换内存（其他页面写入 / bfcache 返回时同步用，只读不写）
+  function reloadFromDisk() {
+    var warm = (mode === 'idb' && idb) ? idbGetAll(S_IMG).catch(function () { return {}; }).then(function (all) { imgCache = all || {}; }) : Promise.resolve();
+    return warm.then(function () {
+      var got = readLsChain();
+      memDb = deepMergeDefaults(got ? got.db : clone(DEFAULT));
+      dirty = false; // 内存已与磁盘对齐
+      return memDb;
+    });
+  }
+  function onExternalReload(fn) { extReloadWaiters.push(fn); }
+  function notifyExternalReload() {
+    extReloadWaiters.forEach(function (fn) { try { fn(memDb); } catch (e) { console.error(e); } });
+  }
+  // 多页面/手机返回键同步：①storage 事件（其他文档写 LS 时本页收到，自己写不触发）
+  // ②pageshow.persisted（手机侧键返回从 bfcache 恢复冻结快照，必须丢弃旧内存重读磁盘）
+  function bindSyncListeners() {
+    if (typeof window === 'undefined' || typeof window.addEventListener !== 'function') return;
+    window.addEventListener('storage', function (e) {
+      if (!e.key || e.key.indexOf('shop_db') !== 0) return;
+      if (dirty) return; // 本页自己有未落盘修改时不被外部覆盖（极短窗口）
+      reloadFromDisk().then(notifyExternalReload).catch(function () {});
+    });
+    window.addEventListener('pageshow', function (e) {
+      if (e && e.persisted) reloadFromDisk().then(notifyExternalReload).catch(function () {});
+    });
+  }
+  bindSyncListeners();
 
   // 把内存态中的 dataURL 图片搬入 IDB，并把内存字段同步替换为指针。
   // 必须改 memDb 本身（而不是只改序列化快照），否则 GC 会把刚写入的图误判为孤儿删掉。
@@ -603,8 +638,16 @@ var Store = (function () {
   }
 
   function doFlush() {
-    if (flushing) { pending = true; return Promise.resolve(); }
+    // 正在写时到达的调用不再"假成功"：挂入等待队列，本轮（含排队轮次）真正落盘后才回调
+    if (flushing) {
+      pending = true;
+      return new Promise(function (resolve, reject) { flushWaiters.push({ resolve: resolve, reject: reject }); });
+    }
     flushing = true;
+    function settleWaiters(err, val) {
+      var w = flushWaiters; flushWaiters = [];
+      w.forEach(function (x) { if (err) x.reject(err); else x.resolve(val); });
+    }
     // 1) 先把内存态里的图片真正写入 IDB 并就地换成指针（memDb 与磁盘保持一致）
     return swapMemImages(memDb).then(function () {
       var snapshot = clone(memDb);
@@ -619,6 +662,7 @@ var Store = (function () {
         }
       } catch (e) {}
       writeLs(str);
+      dirty = false; // LS 已真正写入
       return afterWrite(str);
     }).catch(function (err) {
       console.error('[Store] 落盘失败', err);
@@ -626,11 +670,21 @@ var Store = (function () {
       throw err;
     }).then(function (r) {
       flushing = false;
-      if (pending) { pending = false; return doFlush(); }
+      if (pending) {
+        pending = false;
+        return doFlush().then(function (r2) { settleWaiters(null, r2); return r2; },
+          function (e) { settleWaiters(e); throw e; });
+      }
+      settleWaiters(null, r);
       return r;
     }, function (err) {
       flushing = false;
-      if (pending) { pending = false; return doFlush(); }
+      if (pending) {
+        pending = false;
+        return doFlush().then(function (r2) { settleWaiters(null, r2); return r2; },
+          function (e) { settleWaiters(e); throw e; });
+      }
+      settleWaiters(err);
       throw err;
     });
   }
@@ -820,6 +874,7 @@ var Store = (function () {
 
   return {
     boot: boot, onReady: onReady, get: get, save: save, flushNow: flushNow,
+    flushIfDirty: flushIfDirty, isDirty: isDirty, reload: reloadFromDisk, onExternalReload: onExternalReload,
     imgSrc: imgSrc, imgExists: imgExists, putImage: putImage, removeImage: removeImage,
     imgKeyOf: imgKeyOf, isPointer: isPointer, compressImage: compressImage, recompress: recompress,
     exportBundle: exportBundle, importBundle: importBundle,
@@ -1088,9 +1143,18 @@ function checkBanned(){
 }
 function showBannedPage(banned){ var page=document.getElementById('bannedPage'); page.classList.add('show'); if(banned&&banned.time){ document.getElementById('bannedTime').innerText=banned.time; } else { var now=new Date(); document.getElementById('bannedTime').innerText=now.getFullYear()+'/'+(now.getMonth()+1)+'/'+now.getDate(); } }
 
-/* 切后台/离开页面前再兜底落盘一次，防止防抖队列没来得及写 */
-document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='hidden'){ try{Store.save();Store.flushNow();}catch(e){} } });
-window.addEventListener('pagehide',function(){ try{Store.save();Store.flushNow();}catch(e){} });
+/* 切后台/离开页面前兜底落盘：只在本页确有未落盘修改时写，
+   防止 bfcache 冻结的旧页面用旧内存覆盖后台/其他页面刚写入的新数据（手机返回键"撤回"问题）*/
+function safeFlush(){ try{ Store.flushIfDirty && Store.flushIfDirty(); }catch(e){} }
+document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='hidden'){ safeFlush(); } });
+window.addEventListener('pagehide',safeFlush);
+/* 其他页面写入 / 手机侧键从 bfcache 返回时，丢弃冻结旧内存、按磁盘最新数据重渲染 */
+Store.onExternalReload(function(){
+  try{
+    renderBarrage&&renderBarrage(); renderCats&&renderCats(); renderGoods&&renderGoods();
+    typeof refreshBadge==='function'&&refreshBadge();
+  }catch(e){ console.warn('外部同步重渲染失败',e); }
+});
 
 /* 启动门控：Store 完成 IDB 预热与迁移自愈后再渲染，杜绝时序丢图 */
 Store.boot().then(function(){ init(); }).catch(function(err){
