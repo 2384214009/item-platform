@@ -273,44 +273,70 @@ var Store = (function () {
   function safeParse(raw) { try { return JSON.parse(raw); } catch (e) { return null; } }
 
   /* ---------- IndexedDB 封装（全部 Promise 化，等事务真完成） ---------- */
+  // 超时阈值（毫秒）：移动端微信/iOS WebView、旧标签占用版本锁时，IDB 可能
+  // 只触发 onblocked 或干脆无任何回调，Promise 会永久挂起 → 启动遮罩永远转。
+  var IDB_OPEN_TIMEOUT = 2500, IDB_TX_TIMEOUT = 3500, BOOT_HARD_TIMEOUT = 4500;
   function openIdb() {
     return new Promise(function (resolve, reject) {
+      var settled = false, timer = null;
+      var finish = function (fn, arg) { if (settled) return; settled = true; if (timer) clearTimeout(timer); fn(arg); };
       var req;
       try { req = indexedDB.open(DB_NAME, DB_VER); } catch (e) { return reject(e); }
       req.onupgradeneeded = function (e) {
-        var db = e.target.result;
-        if (!db.objectStoreNames.contains(S_IMG)) db.createObjectStore(S_IMG);
-        if (!db.objectStoreNames.contains(S_BAK)) db.createObjectStore(S_BAK);
+        try {
+          var db0 = e.target.result;
+          if (!db0.objectStoreNames.contains(S_IMG)) db0.createObjectStore(S_IMG);
+          if (!db0.objectStoreNames.contains(S_BAK)) db0.createObjectStore(S_BAK);
+        } catch (ex) { finish(reject, ex); }
       };
-      req.onsuccess = function () { resolve(req.result); };
-      req.onerror = function () { reject(req.error || new Error('IDB 打开失败')); };
+      req.onsuccess = function () { finish(resolve, req.result); };
+      req.onerror = function () { finish(reject, req.error || new Error('IDB 打开失败')); };
+      req.onblocked = function () {
+        // 其他标签开着旧版页面占着版本锁：不傻等，直接 reject 走 ls 降级，保证能进页面
+        try { if (req.result) req.result.close(); } catch (e) {}
+        finish(reject, new Error('IDB 升级被其他标签页阻塞'));
+      };
+      timer = setTimeout(function () {
+        try { if (req.result) req.result.close(); } catch (e) {}
+        finish(reject, new Error('IDB 打开超时'));
+      }, IDB_OPEN_TIMEOUT);
     });
   }
   function tx(storeName, mode2, fn) {
     return new Promise(function (resolve, reject) {
+      var settled = false, timer = null;
+      var finish = function (fn2, arg) { if (settled) return; settled = true; if (timer) clearTimeout(timer); fn2(arg); };
       var t;
       try { t = idb.transaction(storeName, mode2); } catch (e) { return reject(e); }
       var result;
       try { result = fn(t.objectStore(storeName), t); } catch (e) { return reject(e); }
-      t.oncomplete = function () { resolve(result); };
-      t.onerror = function () { reject(t.error || new Error('IDB 事务失败')); };
-      t.onabort = function () { reject(t.error || new Error('IDB 事务中止')); };
+      t.oncomplete = function () { finish(resolve, result); };
+      t.onerror = function () { finish(reject, t.error || new Error('IDB 事务失败')); };
+      t.onabort = function () { finish(reject, t.error || new Error('IDB 事务中止')); };
+      timer = setTimeout(function () {
+        try { t.abort(); } catch (e) {}
+        finish(reject, new Error('IDB 事务超时'));
+      }, IDB_TX_TIMEOUT);
     });
   }
   function idbPut(storeName, key, val) { return tx(storeName, 'readwrite', function (s) { s.put(val, key); }); }
   function idbDel(storeName, key) { return tx(storeName, 'readwrite', function (s) { s.delete(key); }); }
   function idbGetAll(storeName) {
     return new Promise(function (resolve, reject) {
+      var settled = false, timer = null;
+      var finish = function (fn, arg) { if (settled) return; settled = true; if (timer) clearTimeout(timer); fn(arg); };
       var out = {};
       try {
         var t = idb.transaction(storeName, 'readonly');
         var req = t.objectStore(storeName).openCursor();
         req.onsuccess = function () {
           var cur = req.result;
-          if (cur) { out[cur.key] = cur.value; cur.continue(); } else resolve(out);
+          if (cur) { out[cur.key] = cur.value; cur.continue(); } else finish(resolve, out);
         };
-        req.onerror = function () { reject(req.error); };
-        t.onerror = function () { reject(t.error); };
+        req.onerror = function () { finish(reject, req.error); };
+        t.onerror = function () { finish(reject, t.error); };
+        t.onabort = function () { finish(reject, t.error || new Error('IDB 游标中止')); };
+        timer = setTimeout(function () { try { t.abort(); } catch (e) {} finish(reject, new Error('IDB 读取超时')); }, IDB_TX_TIMEOUT);
       } catch (e) { reject(e); }
     });
   }
@@ -334,48 +360,67 @@ var Store = (function () {
   function isPointer(s) { return typeof s === 'string' && s.indexOf(IMG_PREFIX) === 0; }
 
   /* ---------- 启动 ---------- */
+  function buildDbFromLsOrDefault() {
+    var got = readLsChain();
+    return deepMergeDefaults(got ? got.db : clone(DEFAULT));
+  }
+  // 幂等完成启动：任何路径只允许完成一次，保证 waiters 只触发一次
+  function completeBoot(db) {
+    if (booted) return Promise.resolve(memDb);
+    memDb = db;
+    booted = true;
+    var ws = waiters; waiters = [];
+    ws.forEach(function (fn) { try { fn(memDb); } catch (e) { console.error(e); } });
+    return Promise.resolve(memDb);
+  }
   function boot() {
-    return openIdb().then(function (db) {
+    var main = openIdb().then(function (db) {
       idb = db;
       return idbGetAll(S_IMG).catch(function () { return {}; });
     }).then(function (all) {
       imgCache = all || {};
     }).catch(function (err) {
-      // IDB 完全不可用 → 降级 ls 模式（图片将强压缩后直接进 LS）
-      mode = 'ls';
+      // IDB 不可用/被阻塞/打开超时 → 降级 ls 模式（图片将强压缩后直接进 LS）
+      mode = 'ls'; idb = null;
       console.warn('[Store] IndexedDB 不可用，降级为 localStorage 模式', err);
     }).then(function () {
       var got = readLsChain();
-      var db, fromIdbSnap = false;
+      var db;
       if (got) {
         db = deepMergeDefaults(got.db);
-      } else {
+      } else if (mode === 'idb') {
         // LS 全空/全损：尝试 IDB 快照
-        if (mode === 'idb') {
-          return idbGetAll(S_BAK).then(function (snaps) {
-            var keys = Object.keys(snaps).filter(function (k) { return k.indexOf('snap_') === 0; }).sort().reverse();
-            if (keys.length) {
-              var s = safeParse(snaps[keys[0]]);
-              if (s && typeof s === 'object') return finishBoot(deepMergeDefaults(s), true);
-            }
-            return finishBoot(deepMergeDefaults(clone(DEFAULT)), false);
-          }).catch(function () { return finishBoot(deepMergeDefaults(clone(DEFAULT)), false); });
-        }
+        return idbGetAll(S_BAK).then(function (snaps) {
+          var keys = Object.keys(snaps).filter(function (k) { return k.indexOf('snap_') === 0; }).sort().reverse();
+          if (keys.length) {
+            var s = safeParse(snaps[keys[0]]);
+            if (s && typeof s === 'object') return finishBoot(deepMergeDefaults(s), true);
+          }
+          return finishBoot(deepMergeDefaults(clone(DEFAULT)), false);
+        }).catch(function () { return finishBoot(deepMergeDefaults(clone(DEFAULT)), false); });
+      } else {
         db = deepMergeDefaults(clone(DEFAULT));
       }
       return finishBoot(db, false);
     });
+    // 硬看门狗：无论上面哪个环节永久挂起，到点强制用 LS/默认数据完成启动，
+    // 绝不让启动遮罩在手机上无限转圈（"一直加载进不去"的最后一道保险）
+    var watchdog = new Promise(function (resolve) {
+      setTimeout(function () {
+        if (booted) return;
+        console.warn('[Store] 启动硬超时，强制以本地数据启动（ls 降级）');
+        mode = 'ls'; idb = null;
+        resolve(completeBoot(buildDbFromLsOrDefault()));
+      }, BOOT_HARD_TIMEOUT);
+    });
+    return Promise.race([main, watchdog]);
   }
 
   function finishBoot(db, fromSnap) {
     return migrate(db).then(function (res) {
-      memDb = res.db;
-      booted = true;
-      if (res.changed || fromSnap) scheduleFlush(0); // 仅当确实发生迁移/恢复时落盘
-      waiters.forEach(function (fn) { try { fn(memDb); } catch (e) { console.error(e); } });
-      waiters = [];
-      return memDb;
-    });
+      if (res.changed || fromSnap) { try { scheduleFlush(0); } catch (e) {} } // 仅当确实迁移/恢复时落盘
+      return completeBoot(res.db);
+    }, function () { return completeBoot(db); });
   }
 
   /* ---------- 历史数据迁移 / 污染自愈，返回 Promise<{db,changed}> ---------- */
@@ -716,6 +761,7 @@ var Store = (function () {
     isBooted: function () { return booted; }, getMode: function () { return mode; }
   };
 })();
+
 
 /* ================== 管理后台业务逻辑（基于 Store 重构） ================== */
 var curUser='',curRole='normal',editGoodsId=null,recordFilter='all',hasUploadedImage=false,pendingImgDataUrl='',uploading=false;
@@ -1144,14 +1190,23 @@ function deleteReport(reportId){
 
 /* ---------- 启动：必须等 Store.boot 完成 ---------- */
 Store.onSaveError(function(){});
-Store.boot().then(function(){
+function adminAfterBoot(){
   var loading=document.getElementById('bootLoading');if(loading)loading.style.display='none';
-  loadRemember();autoLogin();
-}).catch(function(err){
+  try{ loadRemember();autoLogin(); }catch(e){ console.error(e); }
+}
+Store.boot().then(adminAfterBoot).catch(function(err){
+  console.error(err);
+  // boot 抛错也强制撤遮罩，不允许卡在加载页
   var loading=document.getElementById('bootLoading');
-  if(loading)loading.innerHTML='<p style="color:#f56c6c;padding:0 24px;text-align:center;">数据存储初始化失败：'+(err&&err.message?err.message:'')+'<br>请不要用无痕模式，并清理少量空间后刷新</p>';
+  if(loading)loading.style.display='none';
 });
-
+/* 应用层看门狗：8 秒后遮罩若仍在，强制撤掉（Store 内部 4.5s 已有硬兜底，此为双保险）*/
+setTimeout(function(){
+  var l=document.getElementById('bootLoading');
+  if(l && l.style.display!=='none'){
+    try{ if(Store.isBooted()){ adminAfterBoot(); } else { l.style.display='none'; } }catch(e){ l.style.display='none'; }
+  }
+},8000);
 </script>
 </body>
 </html>
