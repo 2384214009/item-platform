@@ -896,9 +896,15 @@ var Store = (function () {
     if (ctrl) init.signal = ctrl.signal;
     return fetch(CLOUD_URL + path, init).then(function (r) {
       clearTimeout(timer);
-      if (!r.ok) throw new Error('云端请求失败 HTTP ' + r.status);
-      // upsert/delete 成功常返回 204 或 201 空 body，按文本读取后空则返回 null，避免 json() 解析空串报错
+      // 统一先读文本：失败时把数据库(PostgREST)返回的 code/message 带进异常，便于精确定位，不再只抛笼统的 HTTP 码
       return r.text().then(function (txt) {
+        if (!r.ok) {
+          var detail = '';
+          try { var j = JSON.parse(txt); detail = (j.code ? '[' + j.code + '] ' : '') + (j.message || '') + (j.hint ? '（' + j.hint + '）' : ''); }
+          catch (e) { detail = (txt || '').slice(0, 150); }
+          throw new Error('云端请求失败 HTTP ' + r.status + (detail ? '：' + detail : ''));
+        }
+        // upsert/delete 成功常返回 204 或 201 空 body，空则返回 null，避免 json() 解析空串报错
         if (!txt) return null;
         try { return JSON.parse(txt); } catch (e) { return null; }
       });
@@ -931,8 +937,28 @@ var Store = (function () {
     if (PICSUM_RE.test(ref)) return '';
     return ref;
   }
+  // 云端 cloud_goods.sort 列为 integer(int4，上限约 21.4 亿)，绝不能塞 Date.now 级 13 位大 id，
+  // 否则触发 22003 "out of range for type integer" 被 400 拒绝；统一用商品在本机列表的序号(小整数)。
+  function goodsSortOf(g) {
+    var i = -1;
+    if (memDb && memDb.goods) {
+      for (var k = 0; k < memDb.goods.length; k++) {
+        if (memDb.goods[k] === g || String(memDb.goods[k].id) === String(g.id)) { i = k; break; }
+      }
+    }
+    var n = i >= 0 ? i : (parseInt(g.sort, 10) || 0);
+    return Math.max(0, Math.min(n, 2000000000));
+  }
+  // id 列 bigint NOT NULL：Number 转换失败(脏数据)时用名称稳定哈希兜底，避免 NaN→null 触发 23502
+  function goodsIdOf(g) {
+    var n = Number(g.id);
+    if (isFinite(n)) return n;
+    var s = String(g.name || '') + '|' + String(g.code || ''), h = 0;
+    for (var i = 0; i < s.length; i++) { h = ((h * 31) + s.charCodeAt(i)) | 0; }
+    return Math.abs(h) + 1;
+  }
   function goodsToRow(g) {
-    return { id: Number(g.id), cat_id: g.catId || '', name: g.name, code: g.code || '', descr: g.desc || '', img: realImg(g.img), sellout: !!g.sellout, sort: Number(g.id) };
+    return { id: goodsIdOf(g), cat_id: g.catId || '', name: g.name, code: g.code || '', descr: g.desc || '', img: realImg(g.img), sellout: !!g.sellout, sort: goodsSortOf(g) };
   }
   function rowToGoods(r) {
     return { id: Number(r.id), catId: r.cat_id || '', name: r.name, code: r.code || '', desc: r.descr || '', img: r.img || '', sellout: !!r.sellout };
