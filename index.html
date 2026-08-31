@@ -314,6 +314,7 @@ var Store = (function () {
   var CLOUD_KEY = 'sb_publishable_H9gYwPXXuKQVpH6Q8XCnRw_yZ1dyaPp';
   var cloudSyncWaiters = [];   // 云端数据到达后的重渲染回调
   var cloudPulling = false, lastCloudPullAt = 0;
+  var CLOUD_FP_KEY = 'shop_cloud_fp';   // 云端商品指纹 {id:updated_at}：增量同步依据，避免每次重复拉取全部图片
 
   var DEFAULT = {
     goods: [
@@ -958,15 +959,38 @@ var Store = (function () {
     return Math.abs(h) + 1;
   }
   function goodsToRow(g) {
-    return { id: goodsIdOf(g), cat_id: g.catId || '', name: g.name, code: g.code || '', descr: g.desc || '', img: realImg(g.img), sellout: !!g.sellout, sort: goodsSortOf(g) };
+    // updated_at 显式给当前时间：新增/编辑/一键发布都会刷新，客户端增量同步据此判断哪些物品变了（不依赖数据库触发器）
+    return { id: goodsIdOf(g), cat_id: g.catId || '', name: g.name, code: g.code || '', descr: g.desc || '', img: realImg(g.img), sellout: !!g.sellout, sort: goodsSortOf(g), updated_at: new Date().toISOString() };
   }
   function rowToGoods(r) {
     return { id: Number(r.id), catId: r.cat_id || '', name: r.name, code: r.code || '', desc: r.descr || '', img: r.img || '', sellout: !!r.sellout };
   }
-  // 拉取云端权威数据覆盖本机商品/分类/公告；云端为空则保留本机，网络失败静默用缓存
-  function cloudPull() {
-    if (cloudPulling) return Promise.resolve(null);
-    cloudPulling = true;
+  // ===== 增量同步：避免每次打开都重复拉取全部商品图（阶段一省流量核心） =====
+  function readCloudFp() { try { return JSON.parse(localStorage.getItem(CLOUD_FP_KEY) || 'null') || null; } catch (e) { return null; } }
+  function writeCloudFp(rows) { try { var fp = {}; (rows || []).forEach(function (r) { fp[r.id] = r.updated_at; }); localStorage.setItem(CLOUD_FP_KEY, JSON.stringify(fp)); } catch (e) {} }
+  // 完整商品行(含图) → 商品对象，图片写入 imgCache/IDB 并换成 idb 指针
+  function ingestGoodsRows(rows) {
+    var goods = (rows || []).map(rowToGoods), imgJobs = [];
+    goods.forEach(function (g) {
+      if (isDataUrl(g.img)) {
+        var k = imgKeyOf(g.id); imgCache[k] = g.img;
+        if (mode === 'idb') { imgJobs.push(idbPut(S_IMG, k, g.img)); g.img = IMG_PREFIX + k; }
+      }
+    });
+    return Promise.all(imgJobs).catch(function () {}).then(function () { return goods; });
+  }
+  // 应用分类/公告 + 落盘 + 触发界面重渲染
+  function applyCloudMetaAndFlush(cRows, bRows) {
+    if (cRows && cRows.length) memDb.categories = cRows.map(function (c) { return { id: c.id, name: c.name, sort: c.sort }; });
+    if (bRows && bRows.length) memDb.bulletins = bRows.map(function (b) { return { id: b.id, content: b.content, enable: b.enable !== false }; });
+    dirty = true;
+    return doFlush().then(function () {
+      dirty = false;
+      cloudSyncWaiters.forEach(function (fn) { try { fn(memDb); } catch (e) { console.error(e); } });
+    });
+  }
+  // 全量拉取（=改造前逻辑）：首次访问/清缓存/增量异常兜底时使用，保证行为不变、不白屏
+  function cloudPullFull() {
     return Promise.all([
       cloudReqRetry('cloud_goods?select=*&order=sort.asc.nullslast', { timeout: 40000 }, 2),
       cloudReqRetry('cloud_categories?select=*&order=sort.asc.nullslast', { timeout: 40000 }, 2),
@@ -974,30 +998,79 @@ var Store = (function () {
     ]).then(function (res) {
       var gRows = res[0] || [], cRows = res[1] || [], bRows = res[2] || [];
       lastCloudPullAt = Date.now();
-      if (!booted || gRows.length === 0) { cloudPulling = false; return { empty: true }; }
-      var goods = gRows.map(rowToGoods), imgJobs = [];
-      goods.forEach(function (g) {
-        if (isDataUrl(g.img)) {
-          var k = imgKeyOf(g.id); imgCache[k] = g.img;
-          if (mode === 'idb') { imgJobs.push(idbPut(S_IMG, k, g.img)); g.img = IMG_PREFIX + k; }
-        }
-      });
-      return Promise.all(imgJobs).catch(function () {}).then(function () {
+      if (!booted || gRows.length === 0) return { empty: true };
+      return ingestGoodsRows(gRows).then(function (goods) {
         memDb.goods = goods;
-        if (cRows.length) memDb.categories = cRows.map(function (c) { return { id: c.id, name: c.name, sort: c.sort }; });
-        if (bRows.length) memDb.bulletins = bRows.map(function (b) { return { id: b.id, content: b.content, enable: b.enable !== false }; });
-        dirty = true;
-        return doFlush();
-      }).then(function () {
-        dirty = false;
-        cloudSyncWaiters.forEach(function (fn) { try { fn(memDb); } catch (e) { console.error(e); } });
-        cloudPulling = false;
-        return { empty: false, count: goods.length };
+        writeCloudFp(gRows);
+        return applyCloudMetaAndFlush(cRows, bRows);
+      }).then(function () { return { empty: false, count: gRows.length, mode: 'full' }; });
+    });
+  }
+  // 按 id 批量拉完整商品(含图)，每批≤30，防止 in 列表/URL 过长
+  function fetchGoodsByIds(ids) {
+    var jobs = [];
+    for (var i = 0; i < ids.length; i += 30) {
+      var part = ids.slice(i, i + 30);
+      jobs.push(cloudReqRetry('cloud_goods?id=in.(' + part.join(',') + ')&select=*', { timeout: 60000 }, 2));
+    }
+    return Promise.all(jobs).then(function (arr) { var all = []; arr.forEach(function (a) { if (a) all = all.concat(a); }); return ingestGoodsRows(all); });
+  }
+  // 增量拉取：先拉【不含图】的轻量元数据做指纹比对，只拉新增/变更物品的图，未变物品沿用本机(含本地图，零图片流量)
+  function cloudPullIncremental() {
+    return Promise.all([
+      cloudReqRetry('cloud_goods?select=id,updated_at,sort&order=sort.asc.nullslast', { timeout: 40000 }, 2),
+      cloudReqRetry('cloud_categories?select=*&order=sort.asc.nullslast', { timeout: 40000 }, 2),
+      cloudReqRetry('cloud_bulletins?select=*', { timeout: 40000 }, 2)
+    ]).then(function (res) {
+      var meta = res[0] || [], cRows = res[1] || [], bRows = res[2] || [];
+      lastCloudPullAt = Date.now();
+      if (!booted || meta.length === 0) return { empty: true };
+      var fp = readCloudFp();
+      var changed = [], cloudIds = {};
+      meta.forEach(function (r) {
+        var sid = String(r.id); cloudIds[sid] = true;
+        if (!fp || fp[sid] === undefined || fp[sid] !== r.updated_at) changed.push(Number(r.id));
       });
-    }).catch(function (e) {
+      var removed = [];
+      if (fp) Object.keys(fp).forEach(function (sid) { if (!cloudIds[sid]) removed.push(Number(sid)); });
+      // 无新增/变更/删除 → 商品与图片完全不动，仅顺手更新分类/公告（近乎零流量）
+      if (changed.length === 0 && removed.length === 0) {
+        return applyCloudMetaAndFlush(cRows, bRows).then(function () { return { empty: false, count: meta.length, mode: 'cached' }; });
+      }
+      return fetchGoodsByIds(changed).then(function (changedGoods) {
+        var changedMap = {}, localMap = {};
+        changedGoods.forEach(function (g) { changedMap[String(g.id)] = g; });
+        (memDb.goods || []).forEach(function (g) { localMap[String(g.id)] = g; });
+        var result = [], delJobs = [];
+        meta.forEach(function (r) {
+          var sid = String(r.id);
+          if (changedMap[sid]) result.push(changedMap[sid]);
+          else if (localMap[sid]) result.push(localMap[sid]); // 未变物品沿用本机对象，保留 idb:// 图指针，绝不丢图
+        });
+        removed.forEach(function (id) { // 云端已删物品：移出并清掉其本地图片
+          var old = localMap[String(id)];
+          if (old && isPointer(old.img)) delJobs.push(idbDel(S_IMG, imgKeyOf(id)).catch(function () {}));
+        });
+        memDb.goods = result;
+        writeCloudFp(meta);
+        return Promise.all(delJobs).catch(function () {}).then(function () { return applyCloudMetaAndFlush(cRows, bRows); });
+      }).then(function () { return { empty: false, count: meta.length, mode: 'incremental', changed: changed.length, removed: removed.length }; });
+    });
+  }
+  // 拉取云端权威数据：有指纹走增量(省流量)，无指纹走全量；增量异常自动回退全量，全量再失败静默用本机
+  function cloudPull() {
+    if (cloudPulling) return Promise.resolve(null);
+    cloudPulling = true;
+    var done = function (r) { cloudPulling = false; return r; };
+    var fail = function (e) {
       cloudPulling = false;
       console.warn('[Store] 云端拉取失败，使用本机缓存数据', e && e.message);
       return { error: e && e.message };
+    };
+    if (!readCloudFp()) return cloudPullFull().then(done, fail);
+    return cloudPullIncremental().then(done, function (e) {
+      console.warn('[Store] 增量同步异常，回退全量拉取', e && e.message);
+      return cloudPullFull().then(done, fail);
     });
   }
   // ---- 管理员写云端（失败不阻断本机保存，返回 Promise 供界面提示/重试） ----
