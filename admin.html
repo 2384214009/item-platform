@@ -199,7 +199,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans G
         <button class="btn-primary" style="margin-top:16px;" onclick="saveGoods()" id="saveGoodsBtn">创建物品</button>
       </div>
     </div>
-    <div id="panel-goodsList" style="display:none;"><div class="goods-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="goodsSearch" placeholder="搜索物品名称..." oninput="renderGoodsList()"></div><div id="goodsListBody"></div></div>
+    <div id="panel-goodsList" style="display:none;"><div class="panel" style="background:linear-gradient(135deg,#e6f7f4,#f0faf8);border:1px solid #b8e6df;"><div style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:8px;">☁️ <b>云端共享</b>：新增/修改/删除物品会自动同步到云端，所有客户刷新后即可看到，不再只存在于本机。若个别物品没同步成功，点下方按钮整体重发一次。</div><button class="btn-primary" id="publishCloudBtn" onclick="publishAllToCloud()" style="background:linear-gradient(135deg,#2eb4a8,#259a8f);width:100%;">☁️ 一键发布到云端（所有设备可见）</button></div><div class="goods-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="goodsSearch" placeholder="搜索物品名称..." oninput="renderGoodsList()"></div><div id="goodsListBody"></div></div>
     <div id="panel-records" style="display:none;"><div class="record-filters"><div class="record-filter active" onclick="filterRecords('all',this)">全部</div><div class="record-filter" onclick="filterRecords('pending',this)">待处理</div><div class="record-filter" onclick="filterRecords('done',this)">已处理</div></div><div id="recordsBody"></div></div>
     <div id="panel-bulletin" style="display:none;"><div class="panel"><div class="panel-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>新增公告</div><div class="form-group"><textarea class="form-input" id="newBulletin" placeholder="请输入公告内容" style="min-height:80px;resize:vertical;font-family:inherit;"></textarea></div><div class="check-row"><input type="checkbox" id="newBulletinEnable" checked><label for="newBulletinEnable">立即启用</label></div><button class="btn-primary" onclick="addBulletin()">发布公告</button></div><div class="panel"><div class="panel-title">公告列表</div><div id="bulletinList"></div></div></div>
     <div id="panel-account" style="display:none;"><div class="panel"><div class="panel-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>修改密码</div><div class="pwd-group"><label class="form-label">原密码</label><input type="password" class="form-input" id="oldPwd" placeholder="请输入原密码"></div><div class="pwd-group"><label class="form-label">新密码</label><input type="password" class="form-input" id="newPwd" placeholder="请输入新密码（至少6位）"></div><div class="pwd-group"><label class="form-label">确认新密码</label><input type="password" class="form-input" id="confirmPwd" placeholder="请再次输入新密码"></div><button class="btn-primary" onclick="changePwd()">确认修改</button></div><div class="panel"><div class="panel-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>数据维护</div><div style="background:var(--bg);border-radius:var(--radius-sm);padding:12px;margin-bottom:12px;"><div style="font-size:13px;color:var(--text2);margin-bottom:6px;">当前存储空间使用 <span id="storageMode" style="color:var(--text3);"></span></div><div id="storageUsage" style="font-size:15px;font-weight:700;color:var(--primary);line-height:1.7;">计算中...</div><div style="height:8px;background:#e0e0e0;border-radius:4px;margin-top:8px;overflow:hidden;"><div id="storageBar" style="height:100%;width:0%;background:var(--primary);border-radius:4px;transition:width .3s;"></div></div></div><button class="btn-primary" style="margin-bottom:10px;background:var(--primary);" onclick="compressAllImages()">🗜 一键压缩所有商品图片</button><button class="btn-primary" style="margin-bottom:10px;background:var(--warning);" onclick="clearDoneOrders()">🗑 清空所有已处理订单</button><button class="btn-primary" style="margin-bottom:10px;background:#8c7ae6;" onclick="cleanupImages()">🧹 清理无用图片（释放空间）</button><button class="backup-btn export" onclick="exportBackup()">💾 导出完整备份（含全部图片，推荐定期保存）</button><button class="backup-btn import" onclick="document.getElementById('backupFile').click()">📥 导入备份文件恢复</button><input type="file" accept="application/json,.json" id="backupFile" style="display:none;"><button class="backup-btn snap" onclick="restoreSnapshot()">♻ 从本机自动快照恢复</button><div style="font-size:12px;color:var(--text2);line-height:1.7;margin-top:8px;">说明：①图片独立存放在浏览器 IndexedDB 大空间数据库，不再占用普通存储，正常使用不会再丢图；②"导出完整备份"会生成一个包含全部物品和图片的文件，换手机/换浏览器/清理缓存后，用"导入备份"即可完整恢复，建议每次大批量上新后导出一份发给自己存档；③系统每约 1 分钟自动生成一份本机快照（最近 3 份），页面数据异常时可用"从本机自动快照恢复"；④清空已处理订单只删除"已处理"记录，待处理订单不受影响。</div></div></div>
@@ -239,15 +239,20 @@ var Store = (function () {
   var dirty = false;                  // 内存是否有尚未落盘的修改（防止冻结旧页面 pagehide 盲目覆盖新数据）
   var extReloadWaiters = [];          // 外部页面（其他标签/bfcache 恢复）数据变化后的重渲染回调
   var lastSnapAt = 0, saveErrorHandler = null;
+  /* ===== 云端共享数据源（Supabase）：管理员发布、所有设备拉取，解决单机数据不互通 ===== */
+  var CLOUD_URL = 'https://sfozgzaopzvxrsxbfyla.supabase.co/rest/v1/';
+  var CLOUD_KEY = 'sb_publishable_H9gYwPXXuKQVpH6Q8XCnRw_yZ1dyaPp';
+  var cloudSyncWaiters = [];   // 云端数据到达后的重渲染回调
+  var cloudPulling = false, lastCloudPullAt = 0;
 
   var DEFAULT = {
     goods: [
-      { id: 1, catId: 'aixi', name: '爱喜酸奶', code: 'No.23', desc: '经典酸奶口味，清爽顺滑', img: 'https://picsum.photos/seed/aixi-yogurt/400/400', sellout: true },
-      { id: 2, catId: 'aixi', name: '爱喜香芋', code: 'No.23', desc: '浓郁香芋风味，绵密细腻', img: 'https://picsum.photos/seed/aixi-taro/400/400', sellout: false },
-      { id: 3, catId: 'aixi', name: '爱喜茉莉', code: 'No.23', desc: '清新茉莉花香，回味悠长', img: 'https://picsum.photos/seed/aixi-jasmine/400/400', sellout: false },
-      { id: 4, catId: 'alishan', name: '阿里山天韵', code: 'No.38', desc: '阿里山经典系列，口感醇厚', img: 'https://picsum.photos/seed/alishan-tianyun/400/400', sellout: false },
-      { id: 5, catId: 'alishan', name: '阿里山芒果', code: 'No.38', desc: '热带芒果风味，果香四溢', img: 'https://picsum.photos/seed/alishan-mango/400/400', sellout: false },
-      { id: 6, catId: 'baile', name: '百乐原味', code: 'No.15', desc: '百乐经典原味，简约之选', img: 'https://picsum.photos/seed/baile-original/400/400', sellout: false }
+      { id: 1, catId: 'aixi', name: '爱喜酸奶', code: 'No.23', desc: '经典酸奶口味，清爽顺滑', img: '', sellout: true },
+      { id: 2, catId: 'aixi', name: '爱喜香芋', code: 'No.23', desc: '浓郁香芋风味，绵密细腻', img: '', sellout: false },
+      { id: 3, catId: 'aixi', name: '爱喜茉莉', code: 'No.23', desc: '清新茉莉花香，回味悠长', img: '', sellout: false },
+      { id: 4, catId: 'alishan', name: '阿里山天韵', code: 'No.38', desc: '阿里山经典系列，口感醇厚', img: '', sellout: false },
+      { id: 5, catId: 'alishan', name: '阿里山芒果', code: 'No.38', desc: '热带芒果风味，果香四溢', img: '', sellout: false },
+      { id: 6, catId: 'baile', name: '百乐原味', code: 'No.15', desc: '百乐经典原味，简约之选', img: '', sellout: false }
     ],
     categories: [
       { id: 'all', name: '全部', sort: 0 }, { id: 'aixi', name: '爱喜', sort: 1 },
@@ -374,6 +379,8 @@ var Store = (function () {
     booted = true;
     var ws = waiters; waiters = [];
     ws.forEach(function (fn) { try { fn(memDb); } catch (e) { console.error(e); } });
+    // 首屏先用本机数据渲染，600ms 后异步拉云端权威数据覆盖（失败静默用本机缓存）
+    if (typeof fetch === 'function') setTimeout(function () { try { cloudPull().catch(function () {}); } catch (e) {} }, 600);
     return Promise.resolve(memDb);
   }
   function boot() {
@@ -804,6 +811,100 @@ var Store = (function () {
     return Promise.resolve({ quota: 5 * 1024 * 1024, usage: 0 });
   }
 
+  /* ================= 云端共享数据源（Supabase REST） =================
+   * 解决"管理员本机新增物品、其他设备看不到"：云端为商品/分类/公告的权威源，
+   * 任何设备启动后异步拉取覆盖本机；管理员增删改同步写云端。购物车/订单/
+   * 管理员账号/举报仍只存本机（各设备私有）。 */
+  function cloudReq(path, opts) {
+    opts = opts || {};
+    var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+    var timer = setTimeout(function () { if (ctrl) ctrl.abort(); }, 25000);
+    var init = { method: opts.method || 'GET', headers: { 'apikey': CLOUD_KEY, 'Authorization': 'Bearer ' + CLOUD_KEY, 'Content-Type': 'application/json' } };
+    if (opts.prefer) init.headers['Prefer'] = opts.prefer;
+    if (opts.body !== undefined) init.body = JSON.stringify(opts.body);
+    if (ctrl) init.signal = ctrl.signal;
+    return fetch(CLOUD_URL + path, init).then(function (r) {
+      clearTimeout(timer);
+      if (!r.ok) throw new Error('云端请求失败 HTTP ' + r.status);
+      // upsert/delete 成功常返回 204 或 201 空 body，按文本读取后空则返回 null，避免 json() 解析空串报错
+      return r.text().then(function (txt) {
+        if (!txt) return null;
+        try { return JSON.parse(txt); } catch (e) { return null; }
+      });
+    }, function (e) { clearTimeout(timer); throw e; });
+  }
+  // 取商品真实图片 dataURL：idb 指针→imgCache 取出；picsum 外链/空→空（不上云无效外链）
+  function realImg(ref) {
+    if (!ref) return '';
+    if (isPointer(ref)) return imgCache[ref.substring(IMG_PREFIX.length)] || '';
+    if (isDataUrl(ref)) return ref;
+    if (PICSUM_RE.test(ref)) return '';
+    return ref;
+  }
+  function goodsToRow(g) {
+    return { id: Number(g.id), cat_id: g.catId || '', name: g.name, code: g.code || '', descr: g.desc || '', img: realImg(g.img), sellout: !!g.sellout, sort: Number(g.id) };
+  }
+  function rowToGoods(r) {
+    return { id: Number(r.id), catId: r.cat_id || '', name: r.name, code: r.code || '', desc: r.descr || '', img: r.img || '', sellout: !!r.sellout };
+  }
+  // 拉取云端权威数据覆盖本机商品/分类/公告；云端为空则保留本机，网络失败静默用缓存
+  function cloudPull() {
+    if (cloudPulling) return Promise.resolve(null);
+    cloudPulling = true;
+    return Promise.all([
+      cloudReq('cloud_goods?select=*&order=sort.asc.nullslast'),
+      cloudReq('cloud_categories?select=*&order=sort.asc.nullslast'),
+      cloudReq('cloud_bulletins?select=*')
+    ]).then(function (res) {
+      var gRows = res[0] || [], cRows = res[1] || [], bRows = res[2] || [];
+      lastCloudPullAt = Date.now();
+      if (!booted || gRows.length === 0) { cloudPulling = false; return { empty: true }; }
+      var goods = gRows.map(rowToGoods), imgJobs = [];
+      goods.forEach(function (g) {
+        if (isDataUrl(g.img)) {
+          var k = imgKeyOf(g.id); imgCache[k] = g.img;
+          if (mode === 'idb') { imgJobs.push(idbPut(S_IMG, k, g.img)); g.img = IMG_PREFIX + k; }
+        }
+      });
+      return Promise.all(imgJobs).catch(function () {}).then(function () {
+        memDb.goods = goods;
+        if (cRows.length) memDb.categories = cRows.map(function (c) { return { id: c.id, name: c.name, sort: c.sort }; });
+        if (bRows.length) memDb.bulletins = bRows.map(function (b) { return { id: b.id, content: b.content, enable: b.enable !== false }; });
+        dirty = true;
+        return doFlush();
+      }).then(function () {
+        dirty = false;
+        cloudSyncWaiters.forEach(function (fn) { try { fn(memDb); } catch (e) { console.error(e); } });
+        cloudPulling = false;
+        return { empty: false, count: goods.length };
+      });
+    }).catch(function (e) {
+      cloudPulling = false;
+      console.warn('[Store] 云端拉取失败，使用本机缓存数据', e && e.message);
+      return { error: e && e.message };
+    });
+  }
+  // ---- 管理员写云端（失败不阻断本机保存，返回 Promise 供界面提示/重试） ----
+  function cloudUpsertGoods(g) { return cloudReq('cloud_goods', { method: 'POST', prefer: 'resolution=merge-duplicates', body: goodsToRow(g) }); }
+  function cloudDeleteGoods(id) { return cloudReq('cloud_goods?id=eq.' + encodeURIComponent(id), { method: 'DELETE' }); }
+  function cloudUpsertCat(c) { return cloudReq('cloud_categories', { method: 'POST', prefer: 'resolution=merge-duplicates', body: { id: String(c.id), name: c.name, sort: c.sort || 0 } }); }
+  function cloudDeleteCat(id) { return cloudReq('cloud_categories?id=eq.' + encodeURIComponent(id), { method: 'DELETE' }); }
+  function bullIdToNum(id) { return Number(String(id).replace(/\D/g, '')) || Date.now(); }
+  function cloudUpsertBulletin(b) { return cloudReq('cloud_bulletins', { method: 'POST', prefer: 'resolution=merge-duplicates', body: { id: bullIdToNum(b.id), content: b.content, enable: b.enable !== false } }); }
+  function cloudDeleteBulletin(id) { return cloudReq('cloud_bulletins?id=eq.' + encodeURIComponent(bullIdToNum(id)), { method: 'DELETE' }); }
+  // 一键全量发布：本机全部商品/分类/公告整体 upsert 到云端（首次上云/批量更新用）
+  function cloudPublishAll() {
+    var goodsRows = memDb.goods.map(goodsToRow);
+    var catRows = memDb.categories.filter(function (c) { return c.id !== 'all'; }).map(function (c) { return { id: String(c.id), name: c.name, sort: c.sort || 0 }; });
+    var bullRows = memDb.bulletins.map(function (b) { return { id: bullIdToNum(b.id), content: b.content, enable: b.enable !== false }; });
+    var jobs = [];
+    if (goodsRows.length) jobs.push(cloudReq('cloud_goods', { method: 'POST', prefer: 'resolution=merge-duplicates', body: goodsRows }));
+    if (catRows.length) jobs.push(cloudReq('cloud_categories', { method: 'POST', prefer: 'resolution=merge-duplicates', body: catRows }));
+    if (bullRows.length) jobs.push(cloudReq('cloud_bulletins', { method: 'POST', prefer: 'resolution=merge-duplicates', body: bullRows }));
+    return Promise.all(jobs).then(function () { return { goods: goodsRows.length, cats: catRows.length, bulls: bullRows.length }; });
+  }
+  function onCloudSync(fn) { cloudSyncWaiters.push(fn); }
+
   return {
     boot: boot, onReady: onReady, get: get, save: save, flushNow: flushNow,
     flushIfDirty: flushIfDirty, isDirty: isDirty, reload: reloadFromDisk, onExternalReload: onExternalReload,
@@ -813,7 +914,13 @@ var Store = (function () {
     collectGarbage: collectGarbage, usage: usage, estimateQuota: estimateQuota,
     idbGetAll: idbGetAll, S_BAK: S_BAK, S_IMG: S_IMG, idbDel: idbDel,
     onSaveError: function (fn) { saveErrorHandler = fn; },
-    isBooted: function () { return booted; }, getMode: function () { return mode; }
+    isBooted: function () { return booted; }, getMode: function () { return mode; },
+    // 云端共享
+    cloudPull: cloudPull, onCloudSync: onCloudSync, cloudPublishAll: cloudPublishAll,
+    cloudUpsertGoods: cloudUpsertGoods, cloudDeleteGoods: cloudDeleteGoods,
+    cloudUpsertCat: cloudUpsertCat, cloudDeleteCat: cloudDeleteCat,
+    cloudUpsertBulletin: cloudUpsertBulletin, cloudDeleteBulletin: cloudDeleteBulletin,
+    lastCloudPullAt: function () { return lastCloudPullAt; }
   };
 })();
 
@@ -913,8 +1020,8 @@ function switchTab(tab){
 /* ---------- 分类 ---------- */
 function renderCatSelect(){var db=Store.get();var sel=document.getElementById('gCat');sel.innerHTML='<option value="">请选择分类</option>';db.categories.filter(function(c){return c.id!=='all';}).forEach(function(c){sel.innerHTML+='<option value="'+c.id+'">'+c.name+'</option>';});}
 function renderCatList(){var db=Store.get();var list=db.categories.filter(function(c){return c.id!=='all';});document.getElementById('catListTitle').innerText='分类列表（'+list.length+'）';var wrap=document.getElementById('catList');if(list.length===0){wrap.innerHTML='<div class="empty"><div class="empty-icon">📂</div><div class="empty-text">暂无分类</div></div>';return;}var html='';list.forEach(function(c){html+='<div class="cat-list-item"><span class="cat-drag">⋮⋮</span><span class="cat-name">'+c.name+'</span><span class="cat-sort">排序：'+(c.sort||0)+'</span><div class="cat-del" onclick="delCat(\''+c.id+'\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></div></div>';});wrap.innerHTML=html;}
-function addCat(){var name=document.getElementById('newCatName').value.trim();var sort=parseInt(document.getElementById('newCatSort').value)||0;if(!name){showToast('请输入分类名称');return;}var db=Store.get();db.categories.push({id:'cat_'+Date.now(),name:name,sort:sort});persist(function(){document.getElementById('newCatName').value='';document.getElementById('newCatSort').value='';renderCatSelect();renderCatList();showToast('分类添加成功');});}
-function delCat(id){if(!confirm('确定删除该分类？'))return;var db=Store.get();db.categories=db.categories.filter(function(c){return c.id!==id;});persist(function(){renderCatSelect();renderCatList();showToast('已删除');});}
+function addCat(){var name=document.getElementById('newCatName').value.trim();var sort=parseInt(document.getElementById('newCatSort').value)||0;if(!name){showToast('请输入分类名称');return;}var db=Store.get();var c={id:'cat_'+Date.now(),name:name,sort:sort};db.categories.push(c);persist(function(){document.getElementById('newCatName').value='';document.getElementById('newCatSort').value='';renderCatSelect();renderCatList();showToast('分类添加成功');if(Store.cloudUpsertCat)Store.cloudUpsertCat(c).catch(function(e){console.warn('分类云端同步失败',e);});});}
+function delCat(id){if(!confirm('确定删除该分类？'))return;var db=Store.get();db.categories=db.categories.filter(function(c){return c.id!==id;});persist(function(){renderCatSelect();renderCatList();showToast('已删除');if(Store.cloudDeleteCat)Store.cloudDeleteCat(id).catch(function(e){console.warn('分类云端删除失败',e);});});}
 
 /* ---------- 物品：上传 / 保存 / 编辑 / 删除 ---------- */
 function resetGoodsForm(){
@@ -962,16 +1069,43 @@ function saveGoods(){
     var newImg=pendingImgDataUrl?pendingImgDataUrl:old.img;
     db.goods[idx]={id:editGoodsId,name:name,code:code,catId:catId,desc:desc,img:newImg,sellout:sellout};
     // 换图后旧图在落盘后的 GC 阶段自动回收（新图复用 img_<id> 同 key 覆盖）
+    var edited=db.goods[idx];
     persist(function(){
       showToast('修改成功');resetGoodsForm();renderGoodsList();
+      syncGoodsToCloud(edited);   // 同步云端，让所有设备可见
     },function(){btn.disabled=false;btn.innerText='保存修改';});
   }else{
     var newId=Date.now();
-    db.goods.push({id:newId,name:name,code:code,catId:catId,desc:desc,img:pendingImgDataUrl,sellout:sellout});
+    var created={id:newId,name:name,code:code,catId:catId,desc:desc,img:pendingImgDataUrl,sellout:sellout};
+    db.goods.push(created);
     persist(function(){
       showToast('创建成功');resetGoodsForm();renderGoodsList();
+      syncGoodsToCloud(db.goods.find(function(g){return g.id===newId;})||created);
     },function(){btn.disabled=false;btn.innerText='创建物品';});
   }
+}
+// 单个商品同步云端（本机已落盘后调用；失败仅提示，不影响本机数据，可用一键发布补救）
+function syncGoodsToCloud(g){
+  if(!g||!Store.cloudUpsertGoods)return;
+  Store.cloudUpsertGoods(g).catch(function(e){
+    console.warn('商品云端同步失败',e);showToast('本机已保存，云端同步失败，可点"一键发布到云端"补救');
+  });
+}
+// 一键把本机全部商品/分类/公告整体发布到云端（首次上云 / 批量同步 / 补救失败用）
+function publishAllToCloud(){
+  if(!Store.cloudPublishAll){showToast('当前版本不支持云端发布');return;}
+  var db=Store.get();
+  if(!db.goods.length){showToast('本机还没有商品，先添加物品');return;}
+  var catN=db.categories.filter(function(c){return c.id!=='all';}).length;
+  if(!confirm('将把本机全部 '+db.goods.length+' 件商品、'+catN+' 个分类、'+db.bulletins.length+' 条公告整体发布到云端，所有客户刷新后即可看到。确定发布？'))return;
+  var btn=document.getElementById('publishCloudBtn');if(btn){btn.disabled=true;btn.innerText='发布中，请稍候...';}
+  Store.flushNow().then(function(){return Store.cloudPublishAll();}).then(function(r){
+    showToast('发布成功：'+r.goods+' 件商品已上云，客户刷新可见');
+    if(btn){btn.disabled=false;btn.innerText='一键发布到云端';}
+  }).catch(function(e){
+    console.warn('一键发布失败',e);showToast('发布失败：'+(e&&e.message?e.message:'网络异常')+'，请重试');
+    if(btn){btn.disabled=false;btn.innerText='一键发布到云端';}
+  });
 }
 function editGoods(id){
   var db=Store.get();var g=db.goods.find(function(x){return x.id==id;});if(!g)return;
@@ -985,7 +1119,7 @@ function editGoods(id){
   if(src){document.getElementById('gPreview').src=src;document.getElementById('gPreview').style.display='block';}
   document.getElementById('gUploadArea').querySelector('p').innerText='点击重新上传封面图片（不换可忽略）';
 }
-function toggleGoodsSellout(id){var db=Store.get();var g=db.goods.find(function(x){return x.id==id;});if(!g)return;g.sellout=!g.sellout;persist(function(){renderGoodsList();showToast(g.sellout?'已标记无库存':'已恢复上架');});}
+function toggleGoodsSellout(id){var db=Store.get();var g=db.goods.find(function(x){return x.id==id;});if(!g)return;g.sellout=!g.sellout;persist(function(){renderGoodsList();showToast(g.sellout?'已标记无库存':'已恢复上架');syncGoodsToCloud(g);});}
 function delGoods(id){
   if(!confirm('确定删除该物品？图片也会一并清理。'))return;
   var db=Store.get();var goods=db.goods.find(function(x){return x.id==id;});
@@ -995,6 +1129,8 @@ function delGoods(id){
     // 落盘成功后删除 IDB 图片（Store GC 也会兜底，这里显式删一次）
     if(goods&&Store.isPointer(goods.img))Store.removeImage(goods.img.substring(6));
     after();
+    // 同步删除云端，让所有设备该商品下架消失
+    if(Store.cloudDeleteGoods)Store.cloudDeleteGoods(id).catch(function(e){console.warn('云端删除失败',e);showToast('本机已删除，云端删除失败，可重新一键发布');});
   });
 }
 function renderGoodsList(){
@@ -1047,9 +1183,9 @@ function delRecord(orderNo){if(!confirm('确定删除这条已处理记录？删
 
 /* ---------- 公告 ---------- */
 function renderBulletins(){var db=Store.get();var wrap=document.getElementById('bulletinList');if(db.bulletins.length===0){wrap.innerHTML='<div class="empty"><div class="empty-icon">📢</div><div class="empty-text">暂无公告</div></div>';return;}var html='';db.bulletins.forEach(function(b){var statusBadge=b.enable?'<span style="color:var(--success);font-size:12px;">已启用</span>':'<span style="color:var(--warning);font-size:12px;">已关闭</span>';var toggleBtn=b.enable?'<button class="bulletin-btn disable" onclick="toggleBulletin(\''+b.id+'\')">关闭公告</button>':'<button class="bulletin-btn enable" onclick="toggleBulletin(\''+b.id+'\')">启用公告</button>';html+='<div class="bulletin-item"><div class="bulletin-content">'+b.content+' '+statusBadge+'</div><div class="bulletin-actions">'+toggleBtn+'<button class="bulletin-btn del" onclick="delBulletin(\''+b.id+'\')">删除</button></div></div>';});wrap.innerHTML=html;}
-function addBulletin(){var content=document.getElementById('newBulletin').value.trim();if(!content){showToast('请输入公告内容');return;}var enable=document.getElementById('newBulletinEnable').checked;var db=Store.get();db.bulletins.push({id:'bul_'+Date.now(),content:content,enable:enable});persist(function(){document.getElementById('newBulletin').value='';renderBulletins();showToast('公告发布成功');});}
-function toggleBulletin(id){var db=Store.get();var b=db.bulletins.find(function(x){return x.id===id;});if(!b)return;b.enable=!b.enable;persist(function(){renderBulletins();showToast(b.enable?'已启用':'已关闭');});}
-function delBulletin(id){if(!confirm('确定删除这条公告？'))return;var db=Store.get();db.bulletins=db.bulletins.filter(function(b){return b.id!=id;});persist(function(){renderBulletins();showToast('已删除');});}
+function addBulletin(){var content=document.getElementById('newBulletin').value.trim();if(!content){showToast('请输入公告内容');return;}var enable=document.getElementById('newBulletinEnable').checked;var db=Store.get();var b={id:'bul_'+Date.now(),content:content,enable:enable};db.bulletins.push(b);persist(function(){document.getElementById('newBulletin').value='';renderBulletins();showToast('公告发布成功');if(Store.cloudUpsertBulletin)Store.cloudUpsertBulletin(b).catch(function(e){console.warn('公告云端同步失败',e);});});}
+function toggleBulletin(id){var db=Store.get();var b=db.bulletins.find(function(x){return x.id===id;});if(!b)return;b.enable=!b.enable;persist(function(){renderBulletins();showToast(b.enable?'已启用':'已关闭');if(Store.cloudUpsertBulletin)Store.cloudUpsertBulletin(b).catch(function(e){console.warn('公告云端同步失败',e);});});}
+function delBulletin(id){if(!confirm('确定删除这条公告？'))return;var db=Store.get();db.bulletins=db.bulletins.filter(function(b){return b.id!=id;});persist(function(){renderBulletins();showToast('已删除');if(Store.cloudDeleteBulletin)Store.cloudDeleteBulletin(id).catch(function(e){console.warn('公告云端删除失败',e);});});}
 
 /* ---------- 账号 ---------- */
 function changePwd(){
@@ -1254,9 +1390,15 @@ function adminRerenderAll(){
   }catch(e){ console.warn('外部同步重渲染失败',e); }
 }
 Store.onExternalReload(adminRerenderAll);
-/* 离开/切后台兜底落盘：仅有改动时写，避免冻结旧页面覆盖新数据 */
+/* 云端数据变化（其他管理员发布/改价）：重渲染所有后台列表 */
+Store.onCloudSync(adminRerenderAll);
+/* 离开/切后台兜底落盘：仅有改动时写，避免冻结旧页面覆盖新数据；切回时节流拉云端最新 */
 function adminSafeFlush(){ try{ Store.flushIfDirty && Store.flushIfDirty(); }catch(e){} }
-document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='hidden'){ adminSafeFlush(); } });
+var __adminLastPull=0;
+document.addEventListener('visibilitychange',function(){
+  if(document.visibilityState==='hidden'){ adminSafeFlush(); }
+  else if(document.visibilityState==='visible'){ var n=Date.now(); if(n-__adminLastPull>15000){ __adminLastPull=n; try{ Store.cloudPull&&Store.cloudPull(); }catch(e){} } }
+});
 window.addEventListener('pagehide',adminSafeFlush);
 function adminAfterBoot(){
   var loading=document.getElementById('bootLoading');if(loading)loading.style.display='none';

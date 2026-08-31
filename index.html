@@ -309,15 +309,20 @@ var Store = (function () {
   var dirty = false;                  // 内存是否有尚未落盘的修改（防止冻结旧页面 pagehide 盲目覆盖新数据）
   var extReloadWaiters = [];          // 外部页面（其他标签/bfcache 恢复）数据变化后的重渲染回调
   var lastSnapAt = 0, saveErrorHandler = null;
+  /* ===== 云端共享数据源（Supabase）：管理员发布、所有设备拉取，解决单机数据不互通 ===== */
+  var CLOUD_URL = 'https://sfozgzaopzvxrsxbfyla.supabase.co/rest/v1/';
+  var CLOUD_KEY = 'sb_publishable_H9gYwPXXuKQVpH6Q8XCnRw_yZ1dyaPp';
+  var cloudSyncWaiters = [];   // 云端数据到达后的重渲染回调
+  var cloudPulling = false, lastCloudPullAt = 0;
 
   var DEFAULT = {
     goods: [
-      { id: 1, catId: 'aixi', name: '爱喜酸奶', code: 'No.23', desc: '经典酸奶口味，清爽顺滑', img: 'https://picsum.photos/seed/aixi-yogurt/400/400', sellout: true },
-      { id: 2, catId: 'aixi', name: '爱喜香芋', code: 'No.23', desc: '浓郁香芋风味，绵密细腻', img: 'https://picsum.photos/seed/aixi-taro/400/400', sellout: false },
-      { id: 3, catId: 'aixi', name: '爱喜茉莉', code: 'No.23', desc: '清新茉莉花香，回味悠长', img: 'https://picsum.photos/seed/aixi-jasmine/400/400', sellout: false },
-      { id: 4, catId: 'alishan', name: '阿里山天韵', code: 'No.38', desc: '阿里山经典系列，口感醇厚', img: 'https://picsum.photos/seed/alishan-tianyun/400/400', sellout: false },
-      { id: 5, catId: 'alishan', name: '阿里山芒果', code: 'No.38', desc: '热带芒果风味，果香四溢', img: 'https://picsum.photos/seed/alishan-mango/400/400', sellout: false },
-      { id: 6, catId: 'baile', name: '百乐原味', code: 'No.15', desc: '百乐经典原味，简约之选', img: 'https://picsum.photos/seed/baile-original/400/400', sellout: false }
+      { id: 1, catId: 'aixi', name: '爱喜酸奶', code: 'No.23', desc: '经典酸奶口味，清爽顺滑', img: '', sellout: true },
+      { id: 2, catId: 'aixi', name: '爱喜香芋', code: 'No.23', desc: '浓郁香芋风味，绵密细腻', img: '', sellout: false },
+      { id: 3, catId: 'aixi', name: '爱喜茉莉', code: 'No.23', desc: '清新茉莉花香，回味悠长', img: '', sellout: false },
+      { id: 4, catId: 'alishan', name: '阿里山天韵', code: 'No.38', desc: '阿里山经典系列，口感醇厚', img: '', sellout: false },
+      { id: 5, catId: 'alishan', name: '阿里山芒果', code: 'No.38', desc: '热带芒果风味，果香四溢', img: '', sellout: false },
+      { id: 6, catId: 'baile', name: '百乐原味', code: 'No.15', desc: '百乐经典原味，简约之选', img: '', sellout: false }
     ],
     categories: [
       { id: 'all', name: '全部', sort: 0 }, { id: 'aixi', name: '爱喜', sort: 1 },
@@ -444,6 +449,8 @@ var Store = (function () {
     booted = true;
     var ws = waiters; waiters = [];
     ws.forEach(function (fn) { try { fn(memDb); } catch (e) { console.error(e); } });
+    // 首屏先用本机数据渲染，600ms 后异步拉云端权威数据覆盖（失败静默用本机缓存）
+    if (typeof fetch === 'function') setTimeout(function () { try { cloudPull().catch(function () {}); } catch (e) {} }, 600);
     return Promise.resolve(memDb);
   }
   function boot() {
@@ -874,6 +881,100 @@ var Store = (function () {
     return Promise.resolve({ quota: 5 * 1024 * 1024, usage: 0 });
   }
 
+  /* ================= 云端共享数据源（Supabase REST） =================
+   * 解决"管理员本机新增物品、其他设备看不到"：云端为商品/分类/公告的权威源，
+   * 任何设备启动后异步拉取覆盖本机；管理员增删改同步写云端。购物车/订单/
+   * 管理员账号/举报仍只存本机（各设备私有）。 */
+  function cloudReq(path, opts) {
+    opts = opts || {};
+    var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+    var timer = setTimeout(function () { if (ctrl) ctrl.abort(); }, 25000);
+    var init = { method: opts.method || 'GET', headers: { 'apikey': CLOUD_KEY, 'Authorization': 'Bearer ' + CLOUD_KEY, 'Content-Type': 'application/json' } };
+    if (opts.prefer) init.headers['Prefer'] = opts.prefer;
+    if (opts.body !== undefined) init.body = JSON.stringify(opts.body);
+    if (ctrl) init.signal = ctrl.signal;
+    return fetch(CLOUD_URL + path, init).then(function (r) {
+      clearTimeout(timer);
+      if (!r.ok) throw new Error('云端请求失败 HTTP ' + r.status);
+      // upsert/delete 成功常返回 204 或 201 空 body，按文本读取后空则返回 null，避免 json() 解析空串报错
+      return r.text().then(function (txt) {
+        if (!txt) return null;
+        try { return JSON.parse(txt); } catch (e) { return null; }
+      });
+    }, function (e) { clearTimeout(timer); throw e; });
+  }
+  // 取商品真实图片 dataURL：idb 指针→imgCache 取出；picsum 外链/空→空（不上云无效外链）
+  function realImg(ref) {
+    if (!ref) return '';
+    if (isPointer(ref)) return imgCache[ref.substring(IMG_PREFIX.length)] || '';
+    if (isDataUrl(ref)) return ref;
+    if (PICSUM_RE.test(ref)) return '';
+    return ref;
+  }
+  function goodsToRow(g) {
+    return { id: Number(g.id), cat_id: g.catId || '', name: g.name, code: g.code || '', descr: g.desc || '', img: realImg(g.img), sellout: !!g.sellout, sort: Number(g.id) };
+  }
+  function rowToGoods(r) {
+    return { id: Number(r.id), catId: r.cat_id || '', name: r.name, code: r.code || '', desc: r.descr || '', img: r.img || '', sellout: !!r.sellout };
+  }
+  // 拉取云端权威数据覆盖本机商品/分类/公告；云端为空则保留本机，网络失败静默用缓存
+  function cloudPull() {
+    if (cloudPulling) return Promise.resolve(null);
+    cloudPulling = true;
+    return Promise.all([
+      cloudReq('cloud_goods?select=*&order=sort.asc.nullslast'),
+      cloudReq('cloud_categories?select=*&order=sort.asc.nullslast'),
+      cloudReq('cloud_bulletins?select=*')
+    ]).then(function (res) {
+      var gRows = res[0] || [], cRows = res[1] || [], bRows = res[2] || [];
+      lastCloudPullAt = Date.now();
+      if (!booted || gRows.length === 0) { cloudPulling = false; return { empty: true }; }
+      var goods = gRows.map(rowToGoods), imgJobs = [];
+      goods.forEach(function (g) {
+        if (isDataUrl(g.img)) {
+          var k = imgKeyOf(g.id); imgCache[k] = g.img;
+          if (mode === 'idb') { imgJobs.push(idbPut(S_IMG, k, g.img)); g.img = IMG_PREFIX + k; }
+        }
+      });
+      return Promise.all(imgJobs).catch(function () {}).then(function () {
+        memDb.goods = goods;
+        if (cRows.length) memDb.categories = cRows.map(function (c) { return { id: c.id, name: c.name, sort: c.sort }; });
+        if (bRows.length) memDb.bulletins = bRows.map(function (b) { return { id: b.id, content: b.content, enable: b.enable !== false }; });
+        dirty = true;
+        return doFlush();
+      }).then(function () {
+        dirty = false;
+        cloudSyncWaiters.forEach(function (fn) { try { fn(memDb); } catch (e) { console.error(e); } });
+        cloudPulling = false;
+        return { empty: false, count: goods.length };
+      });
+    }).catch(function (e) {
+      cloudPulling = false;
+      console.warn('[Store] 云端拉取失败，使用本机缓存数据', e && e.message);
+      return { error: e && e.message };
+    });
+  }
+  // ---- 管理员写云端（失败不阻断本机保存，返回 Promise 供界面提示/重试） ----
+  function cloudUpsertGoods(g) { return cloudReq('cloud_goods', { method: 'POST', prefer: 'resolution=merge-duplicates', body: goodsToRow(g) }); }
+  function cloudDeleteGoods(id) { return cloudReq('cloud_goods?id=eq.' + encodeURIComponent(id), { method: 'DELETE' }); }
+  function cloudUpsertCat(c) { return cloudReq('cloud_categories', { method: 'POST', prefer: 'resolution=merge-duplicates', body: { id: String(c.id), name: c.name, sort: c.sort || 0 } }); }
+  function cloudDeleteCat(id) { return cloudReq('cloud_categories?id=eq.' + encodeURIComponent(id), { method: 'DELETE' }); }
+  function bullIdToNum(id) { return Number(String(id).replace(/\D/g, '')) || Date.now(); }
+  function cloudUpsertBulletin(b) { return cloudReq('cloud_bulletins', { method: 'POST', prefer: 'resolution=merge-duplicates', body: { id: bullIdToNum(b.id), content: b.content, enable: b.enable !== false } }); }
+  function cloudDeleteBulletin(id) { return cloudReq('cloud_bulletins?id=eq.' + encodeURIComponent(bullIdToNum(id)), { method: 'DELETE' }); }
+  // 一键全量发布：本机全部商品/分类/公告整体 upsert 到云端（首次上云/批量更新用）
+  function cloudPublishAll() {
+    var goodsRows = memDb.goods.map(goodsToRow);
+    var catRows = memDb.categories.filter(function (c) { return c.id !== 'all'; }).map(function (c) { return { id: String(c.id), name: c.name, sort: c.sort || 0 }; });
+    var bullRows = memDb.bulletins.map(function (b) { return { id: bullIdToNum(b.id), content: b.content, enable: b.enable !== false }; });
+    var jobs = [];
+    if (goodsRows.length) jobs.push(cloudReq('cloud_goods', { method: 'POST', prefer: 'resolution=merge-duplicates', body: goodsRows }));
+    if (catRows.length) jobs.push(cloudReq('cloud_categories', { method: 'POST', prefer: 'resolution=merge-duplicates', body: catRows }));
+    if (bullRows.length) jobs.push(cloudReq('cloud_bulletins', { method: 'POST', prefer: 'resolution=merge-duplicates', body: bullRows }));
+    return Promise.all(jobs).then(function () { return { goods: goodsRows.length, cats: catRows.length, bulls: bullRows.length }; });
+  }
+  function onCloudSync(fn) { cloudSyncWaiters.push(fn); }
+
   return {
     boot: boot, onReady: onReady, get: get, save: save, flushNow: flushNow,
     flushIfDirty: flushIfDirty, isDirty: isDirty, reload: reloadFromDisk, onExternalReload: onExternalReload,
@@ -883,7 +984,13 @@ var Store = (function () {
     collectGarbage: collectGarbage, usage: usage, estimateQuota: estimateQuota,
     idbGetAll: idbGetAll, S_BAK: S_BAK, S_IMG: S_IMG, idbDel: idbDel,
     onSaveError: function (fn) { saveErrorHandler = fn; },
-    isBooted: function () { return booted; }, getMode: function () { return mode; }
+    isBooted: function () { return booted; }, getMode: function () { return mode; },
+    // 云端共享
+    cloudPull: cloudPull, onCloudSync: onCloudSync, cloudPublishAll: cloudPublishAll,
+    cloudUpsertGoods: cloudUpsertGoods, cloudDeleteGoods: cloudDeleteGoods,
+    cloudUpsertCat: cloudUpsertCat, cloudDeleteCat: cloudDeleteCat,
+    cloudUpsertBulletin: cloudUpsertBulletin, cloudDeleteBulletin: cloudDeleteBulletin,
+    lastCloudPullAt: function () { return lastCloudPullAt; }
   };
 })();
 
@@ -1156,6 +1263,21 @@ Store.onExternalReload(function(){
     renderBarrage&&renderBarrage(); renderCats&&renderCats(); renderGoods&&renderGoods();
     typeof refreshBadge==='function'&&refreshBadge();
   }catch(e){ console.warn('外部同步重渲染失败',e); }
+});
+/* 云端权威数据到达（管理员后台增删改后）：所有客户设备用最新商品重渲染 */
+Store.onCloudSync(function(){
+  try{
+    renderBarrage&&renderBarrage(); renderCats&&renderCats(); renderGoods&&renderGoods();
+    typeof refreshBadge==='function'&&refreshBadge();
+  }catch(e){ console.warn('云端同步重渲染失败',e); }
+});
+/* 客户切回前台时节流拉取云端最新（15 秒内不重复拉），保证看到管理员最新发布 */
+var __lastVisiblePull=0;
+document.addEventListener('visibilitychange',function(){
+  if(document.visibilityState==='visible'){
+    var now=Date.now();
+    if(now-__lastVisiblePull>15000){ __lastVisiblePull=now; try{ Store.cloudPull&&Store.cloudPull(); }catch(e){} }
+  }
 });
 
 /* 启动门控：Store 完成 IDB 预热与迁移自愈后再渲染，杜绝时序丢图 */
