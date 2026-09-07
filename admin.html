@@ -250,6 +250,13 @@ var Store = (function () {
   var CRYPTO = (typeof globalThis !== 'undefined' && globalThis.crypto) ? globalThis.crypto
               : (typeof crypto !== 'undefined' ? crypto : null);
   var adminsMergedAt = 0;               // 上次成功合并云端管理员的时间戳
+  var syncAdmins = false;               // 仅后台页(admin-app)需要拉管理员账号；顾客前台不拉，避免无谓下发哈希
+  function setAdminMode(v) { syncAdmins = !!v; }
+  // 云端管理员拉取任务：仅后台模式发起；任何失败(如表缺失/弱网)返回空数组，绝不拖垮商品/分类/公告同步
+  function adminPullJob() {
+    if (!syncAdmins) return Promise.resolve([]);
+    return cloudReqRetry('cloud_admins?select=*', { timeout: 40000 }, 2).catch(function () { return []; });
+  }
 
   var DEFAULT = {
     goods: [
@@ -918,7 +925,7 @@ var Store = (function () {
   function applyCloudMetaAndFlush(cRows, bRows, aRows) {
     if (cRows && cRows.length) memDb.categories = cRows.map(function (c) { return { id: c.id, name: c.name, sort: c.sort }; });
     if (bRows && bRows.length) memDb.bulletins = bRows.map(function (b) { return { id: b.id, content: b.content, enable: b.enable !== false }; });
-    if (aRows) mergeCloudAdmins(aRows);
+    if (syncAdmins && aRows) mergeCloudAdmins(aRows);
     dirty = true;
     return doFlush().then(function () {
       dirty = false;
@@ -931,11 +938,11 @@ var Store = (function () {
       cloudReqRetry('cloud_goods?select=*&order=sort.asc.nullslast', { timeout: 40000 }, 2),
       cloudReqRetry('cloud_categories?select=*&order=sort.asc.nullslast', { timeout: 40000 }, 2),
       cloudReqRetry('cloud_bulletins?select=*', { timeout: 40000 }, 2),
-      cloudReqRetry('cloud_admins?select=*', { timeout: 40000 }, 2).catch(function () { return []; })
+      adminPullJob()
     ]).then(function (res) {
       var gRows = res[0] || [], cRows = res[1] || [], bRows = res[2] || [], aRows = res[3] || [];
       lastCloudPullAt = Date.now();
-      if (!booted || gRows.length === 0) { if (aRows.length) mergeCloudAdmins(aRows); return { empty: true }; }
+      if (!booted || gRows.length === 0) { if (syncAdmins && aRows.length) mergeCloudAdmins(aRows); return { empty: true }; }
       return ingestGoodsRows(gRows).then(function (goods) {
         memDb.goods = goods;
         writeCloudFp(gRows);
@@ -958,11 +965,11 @@ var Store = (function () {
       cloudReqRetry('cloud_goods?select=id,updated_at,sort&order=sort.asc.nullslast', { timeout: 40000 }, 2),
       cloudReqRetry('cloud_categories?select=*&order=sort.asc.nullslast', { timeout: 40000 }, 2),
       cloudReqRetry('cloud_bulletins?select=*', { timeout: 40000 }, 2),
-      cloudReqRetry('cloud_admins?select=*', { timeout: 40000 }, 2).catch(function () { return []; })
+      adminPullJob()
     ]).then(function (res) {
       var meta = res[0] || [], cRows = res[1] || [], bRows = res[2] || [], aRows = res[3] || [];
       lastCloudPullAt = Date.now();
-      if (!booted || meta.length === 0) { if (aRows.length) mergeCloudAdmins(aRows); return { empty: true }; }
+      if (!booted || meta.length === 0) { if (syncAdmins && aRows.length) mergeCloudAdmins(aRows); return { empty: true }; }
       var fp = readCloudFp();
       var changed = [], cloudIds = {};
       meta.forEach(function (r) {
@@ -1073,7 +1080,12 @@ var Store = (function () {
     // 1) 云端新增/更新
     Object.keys(cloudNames).forEach(function (u) {
       var ca = cloudNames[u], la = localByName[u];
-      if (la) { la.role = ca.role; la.pwdHash = ca.pwdHash; la.salt = ca.salt; la.iter = ca.iter; }
+      if (la) {
+        // 云端哈希与本机已记录的哈希不同 = 密码在别的设备改过：作废本机缓存的旧明文，
+        // 强制以云端新哈希为准（否则 matchAdmin 明文优先会让旧密码在他设备上继续有效）
+        if (la.pwdHash && la.pwdHash !== ca.pwdHash && 'pwd' in la) delete la.pwd;
+        la.role = ca.role; la.pwdHash = ca.pwdHash; la.salt = ca.salt; la.iter = ca.iter;
+      }
       else memDb.adminAccounts.push(ca);
     });
     // 2) 云端已删除的"云端来源账号"同步移除（纯本机明文账号保留，防止弱网空结果误删）
@@ -1172,6 +1184,7 @@ var Store = (function () {
     cloudUpsertCat: cloudUpsertCat, cloudDeleteCat: cloudDeleteCat,
     cloudUpsertBulletin: cloudUpsertBulletin, cloudDeleteBulletin: cloudDeleteBulletin,
     // 云端管理员账号同步
+    setAdminMode: setAdminMode,
     hashAdminPwd: hashAdminPwd, verifyAdminPwd: verifyAdminPwd,
     cloudUpsertAdmin: cloudUpsertAdmin, cloudDeleteAdmin: cloudDeleteAdmin, cloudSyncAdmins: cloudSyncAdmins,
     lastCloudPullAt: function () { return lastCloudPullAt; }
@@ -1180,6 +1193,7 @@ var Store = (function () {
 
 
 /* ================== 管理后台业务逻辑（基于 Store 重构） ================== */
+try { if (typeof Store !== 'undefined' && Store.setAdminMode) Store.setAdminMode(true); } catch (e) {}
 var curUser='',curRole='normal',editGoodsId=null,recordFilter='all',hasUploadedImage=false,pendingImgDataUrl='',uploading=false;
 
 /* ===== Supabase配置（跨设备同步举报数据）===== */
@@ -1250,9 +1264,18 @@ function autoLogin(){
   }catch(e){}
 }
 function loginSucceed(admin,p){
+  doLogin._cloudTried=false;
   if(document.getElementById('rememberCheck').checked){localStorage.setItem('admin_remember',btoa(JSON.stringify({u:admin.username,p:p})));}else{localStorage.removeItem('admin_remember');}
   try{localStorage.setItem('admin_session',btoa(JSON.stringify({u:admin.username,r:admin.role||'normal',t:Date.now()})));}catch(e){}
   enterAdmin(admin);
+}
+// 登录前补拉云端：启动同步可能仍在进行（弱网下 95 件全量要数秒~十几秒），最多等约 12 秒
+function pullCloudForLogin(round){
+  round=round||0;
+  return Store.cloudPull().then(function(r){
+    if(r!==null||round>=5)return r;
+    return new Promise(function(res){setTimeout(res,2000);}).then(function(){return pullCloudForLogin(round+1);});
+  });
 }
 // 账号匹配：先明文(本机老账号)，再 PBKDF2 哈希(云端同步下来的账号)；返回 Promise<admin|null>
 function matchAdmin(u,p){
@@ -1269,14 +1292,10 @@ function doLogin(){
   if(!u||!p){showToast('请输入账号和密码');return;}
   matchAdmin(u,p).then(function(admin){
     if(admin)return loginSucceed(admin,p);
-    // 本机没匹配上（新设备/云端账号还没拉到）：主动同步一次云端再判，仅补拉一次防死循环
+    // 本机没匹配上（新设备/云端账号还没拉到）：主动同步一次云端再判，弱网下等待启动同步完成
     if(!doLogin._cloudTried&&Store.cloudPull){
       doLogin._cloudTried=true;showToast('正在从云端同步管理员账号…');
-      return Store.cloudPull().then(function(r){
-        // 若启动同步仍在进行(返回null)，稍候再拉一次
-        if(r===null)return new Promise(function(res){setTimeout(res,1500);}).then(function(){return Store.cloudPull();});
-        return r;
-      }).then(function(){return matchAdmin(u,p);}).then(function(a2){
+      return pullCloudForLogin().then(function(){return matchAdmin(u,p);}).then(function(a2){
         if(a2)loginSucceed(a2,p);else showToast('账号或者密码错误，请检查');
       }).catch(function(){showToast('账号或者密码错误，请检查');});
     }
