@@ -245,6 +245,11 @@ var Store = (function () {
   var cloudSyncWaiters = [];   // 云端数据到达后的重渲染回调
   var cloudPulling = false, lastCloudPullAt = 0;
   var CLOUD_FP_KEY = 'shop_cloud_fp';   // 云端商品指纹 {id:updated_at}：增量同步依据，避免每次重复拉取全部图片
+  /* ===== 云端管理员账号（cloud_admins）：跨设备同步登录账号，密码只存 PBKDF2 哈希、绝不存明文 ===== */
+  var ADMIN_PBKDF2_ITER = 100000;       // PBKDF2-HMAC-SHA256 迭代次数
+  var CRYPTO = (typeof globalThis !== 'undefined' && globalThis.crypto) ? globalThis.crypto
+              : (typeof crypto !== 'undefined' ? crypto : null);
+  var adminsMergedAt = 0;               // 上次成功合并云端管理员的时间戳
 
   var DEFAULT = {
     goods: [
@@ -910,9 +915,10 @@ var Store = (function () {
     return Promise.all(imgJobs).catch(function () {}).then(function () { return goods; });
   }
   // 应用分类/公告 + 落盘 + 触发界面重渲染
-  function applyCloudMetaAndFlush(cRows, bRows) {
+  function applyCloudMetaAndFlush(cRows, bRows, aRows) {
     if (cRows && cRows.length) memDb.categories = cRows.map(function (c) { return { id: c.id, name: c.name, sort: c.sort }; });
     if (bRows && bRows.length) memDb.bulletins = bRows.map(function (b) { return { id: b.id, content: b.content, enable: b.enable !== false }; });
+    if (aRows) mergeCloudAdmins(aRows);
     dirty = true;
     return doFlush().then(function () {
       dirty = false;
@@ -924,15 +930,16 @@ var Store = (function () {
     return Promise.all([
       cloudReqRetry('cloud_goods?select=*&order=sort.asc.nullslast', { timeout: 40000 }, 2),
       cloudReqRetry('cloud_categories?select=*&order=sort.asc.nullslast', { timeout: 40000 }, 2),
-      cloudReqRetry('cloud_bulletins?select=*', { timeout: 40000 }, 2)
+      cloudReqRetry('cloud_bulletins?select=*', { timeout: 40000 }, 2),
+      cloudReqRetry('cloud_admins?select=*', { timeout: 40000 }, 2).catch(function () { return []; })
     ]).then(function (res) {
-      var gRows = res[0] || [], cRows = res[1] || [], bRows = res[2] || [];
+      var gRows = res[0] || [], cRows = res[1] || [], bRows = res[2] || [], aRows = res[3] || [];
       lastCloudPullAt = Date.now();
-      if (!booted || gRows.length === 0) return { empty: true };
+      if (!booted || gRows.length === 0) { if (aRows.length) mergeCloudAdmins(aRows); return { empty: true }; }
       return ingestGoodsRows(gRows).then(function (goods) {
         memDb.goods = goods;
         writeCloudFp(gRows);
-        return applyCloudMetaAndFlush(cRows, bRows);
+        return applyCloudMetaAndFlush(cRows, bRows, aRows);
       }).then(function () { return { empty: false, count: gRows.length, mode: 'full' }; });
     });
   }
@@ -950,11 +957,12 @@ var Store = (function () {
     return Promise.all([
       cloudReqRetry('cloud_goods?select=id,updated_at,sort&order=sort.asc.nullslast', { timeout: 40000 }, 2),
       cloudReqRetry('cloud_categories?select=*&order=sort.asc.nullslast', { timeout: 40000 }, 2),
-      cloudReqRetry('cloud_bulletins?select=*', { timeout: 40000 }, 2)
+      cloudReqRetry('cloud_bulletins?select=*', { timeout: 40000 }, 2),
+      cloudReqRetry('cloud_admins?select=*', { timeout: 40000 }, 2).catch(function () { return []; })
     ]).then(function (res) {
-      var meta = res[0] || [], cRows = res[1] || [], bRows = res[2] || [];
+      var meta = res[0] || [], cRows = res[1] || [], bRows = res[2] || [], aRows = res[3] || [];
       lastCloudPullAt = Date.now();
-      if (!booted || meta.length === 0) return { empty: true };
+      if (!booted || meta.length === 0) { if (aRows.length) mergeCloudAdmins(aRows); return { empty: true }; }
       var fp = readCloudFp();
       var changed = [], cloudIds = {};
       meta.forEach(function (r) {
@@ -963,9 +971,9 @@ var Store = (function () {
       });
       var removed = [];
       if (fp) Object.keys(fp).forEach(function (sid) { if (!cloudIds[sid]) removed.push(Number(sid)); });
-      // 无新增/变更/删除 → 商品与图片完全不动，仅顺手更新分类/公告（近乎零流量）
+      // 无新增/变更/删除 → 商品与图片完全不动，仅顺手更新分类/公告/管理员（近乎零流量）
       if (changed.length === 0 && removed.length === 0) {
-        return applyCloudMetaAndFlush(cRows, bRows).then(function () { return { empty: false, count: meta.length, mode: 'cached' }; });
+        return applyCloudMetaAndFlush(cRows, bRows, aRows).then(function () { return { empty: false, count: meta.length, mode: 'cached' }; });
       }
       return fetchGoodsByIds(changed).then(function (changedGoods) {
         var changedMap = {}, localMap = {};
@@ -983,7 +991,7 @@ var Store = (function () {
         });
         memDb.goods = result;
         writeCloudFp(meta);
-        return Promise.all(delJobs).catch(function () {}).then(function () { return applyCloudMetaAndFlush(cRows, bRows); });
+        return Promise.all(delJobs).catch(function () {}).then(function () { return applyCloudMetaAndFlush(cRows, bRows, aRows); });
       }).then(function () { return { empty: false, count: meta.length, mode: 'incremental', changed: changed.length, removed: removed.length }; });
     });
   }
@@ -1011,6 +1019,97 @@ var Store = (function () {
   function bullIdToNum(id) { return Number(String(id).replace(/\D/g, '')) || Date.now(); }
   function cloudUpsertBulletin(b) { return cloudReqRetry('cloud_bulletins', { method: 'POST', prefer: 'resolution=merge-duplicates', body: { id: bullIdToNum(b.id), content: b.content, enable: b.enable !== false }, timeout: 60000 }, 3); }
   function cloudDeleteBulletin(id) { return cloudReqRetry('cloud_bulletins?id=eq.' + encodeURIComponent(bullIdToNum(id)), { method: 'DELETE', timeout: 60000 }, 3); }
+
+  /* ============ 云端管理员账号 cloud_admins（密码 PBKDF2 哈希，绝不明文上云） ============
+   * 本机账号形态（兼容演进）：
+   *   老账号 {username,pwd,role}（pwd=明文，仅本机，离线可登）
+   *   云端账号 {username,role,pwdHash,salt,iter}（无明文，登录时本地 PBKDF2 比对，离线也能登）
+   * 合并策略：云端行补进本机/更新哈希与角色；云端已删除的"云端来源账号"(带 pwdHash)本机同步移除，
+   * 纯本机账号(只有明文、尚未上云)永不被云端结果删除，防止拉取失败误清。 */
+  function hexToBytes(hex) {
+    var out = new Uint8Array(hex.length / 2);
+    for (var i = 0; i < out.length; i++) out[i] = parseInt(hex.substr(i * 2, 2), 16);
+    return out;
+  }
+  function bytesToHex(buf) {
+    var s = ''; for (var i = 0; i < buf.length; i++) { var h = buf[i].toString(16); s += h.length === 1 ? '0' + h : h; }
+    return s;
+  }
+  function randomSaltHex() {
+    var a = new Uint8Array(16);
+    if (CRYPTO && CRYPTO.getRandomValues) CRYPTO.getRandomValues(a);
+    else for (var i = 0; i < 16; i++) a[i] = Math.floor(Math.random() * 256);
+    return bytesToHex(a);
+  }
+  // PBKDF2-HMAC-SHA256 派生 256bit，返回 hex；依赖 WebCrypto（iOS Safari/现代浏览器/Node 均内置，需 https 安全上下文）
+  function pbkdf2Hex(pwd, saltHex, iter) {
+    if (!CRYPTO || !CRYPTO.subtle) return Promise.reject(new Error('当前环境不支持密码加密(WebCrypto)'));
+    var enc = new TextEncoder();
+    return CRYPTO.subtle.importKey('raw', enc.encode(String(pwd)), { name: 'PBKDF2' }, false, ['deriveBits']).then(function (key) {
+      return CRYPTO.subtle.deriveBits({ name: 'PBKDF2', salt: hexToBytes(saltHex), iterations: iter, hash: 'SHA-256' }, key, 256);
+    }).then(function (bits) { return bytesToHex(new Uint8Array(bits)); });
+  }
+  // 新建/改密码时调用：生成新盐并哈希
+  function hashAdminPwd(pwd, iter) {
+    var salt = randomSaltHex(), n = iter || ADMIN_PBKDF2_ITER;
+    return pbkdf2Hex(pwd, salt, n).then(function (h) { return { pwdHash: h, salt: salt, iter: n }; });
+  }
+  // 登录时校验：明文密码 vs 账号记录里的哈希
+  function verifyAdminPwd(pwd, acc) {
+    if (!acc || !acc.pwdHash) return Promise.resolve(false);
+    return pbkdf2Hex(pwd, acc.salt, acc.iter || ADMIN_PBKDF2_ITER).then(function (h) { return h === acc.pwdHash; }, function () { return false; });
+  }
+  // 云端行 → 本机账号结构
+  function rowToAdmin(r) {
+    return { username: String(r.username).toLowerCase(), role: r.role || 'normal', pwdHash: r.pwd_hash, salt: r.salt, iter: r.iter || ADMIN_PBKDF2_ITER };
+  }
+  // 把云端管理员合并进 memDb（内存层；落盘由调用方统一 flush）
+  function mergeCloudAdmins(rows) {
+    if (!Array.isArray(rows)) return;
+    if (!Array.isArray(memDb.adminAccounts)) memDb.adminAccounts = [];
+    var cloudNames = {}, localByName = {};
+    rows.forEach(function (r) { cloudNames[String(r.username).toLowerCase()] = rowToAdmin(r); });
+    memDb.adminAccounts.forEach(function (a) { localByName[String(a.username).toLowerCase()] = a; });
+    // 1) 云端新增/更新
+    Object.keys(cloudNames).forEach(function (u) {
+      var ca = cloudNames[u], la = localByName[u];
+      if (la) { la.role = ca.role; la.pwdHash = ca.pwdHash; la.salt = ca.salt; la.iter = ca.iter; }
+      else memDb.adminAccounts.push(ca);
+    });
+    // 2) 云端已删除的"云端来源账号"同步移除（纯本机明文账号保留，防止弱网空结果误删）
+    memDb.adminAccounts = memDb.adminAccounts.filter(function (a) {
+      var u = String(a.username).toLowerCase();
+      if (cloudNames[u]) return true;
+      return !a.pwdHash;
+    });
+    adminsMergedAt = Date.now();
+  }
+  // 新增管理员上云（必须带明文 pwd 用于哈希；成功后云端只留哈希）
+  function cloudUpsertAdmin(acc) {
+    if (!acc || !acc.username || !acc.pwd) return Promise.reject(new Error('缺少账号或密码，无法同步'));
+    return hashAdminPwd(acc.pwd).then(function (h) {
+      var row = { username: String(acc.username).toLowerCase(), pwd_hash: h.pwdHash, salt: h.salt, iter: h.iter, role: acc.role || 'normal', updated_at: new Date().toISOString() };
+      return cloudReqRetry('cloud_admins', { method: 'POST', prefer: 'resolution=merge-duplicates', body: row, timeout: 60000 }, 3);
+    });
+  }
+  function cloudDeleteAdmin(username) {
+    return cloudReqRetry('cloud_admins?username=eq.' + encodeURIComponent(String(username).toLowerCase()), { method: 'DELETE', timeout: 60000 }, 3);
+  }
+  // 超管进后台时对账：拉云端合并本机；本机有明文而云端没有的账号（默认超管/本机新加）补传上云
+  function cloudSyncAdmins() {
+    return cloudReqRetry('cloud_admins?select=*', { timeout: 40000 }, 2).catch(function () { return null; }).then(function (rows) {
+      if (!Array.isArray(rows)) return { cloud: -1, uploaded: 0 };   // 拉取失败不折腾本机
+      mergeCloudAdmins(rows);
+      var cloudNames = {}; rows.forEach(function (r) { cloudNames[String(r.username).toLowerCase()] = true; });
+      var todo = (memDb.adminAccounts || []).filter(function (a) { return a.pwd && !cloudNames[String(a.username).toLowerCase()]; });
+      return todo.reduce(function (chain, a) {
+        return chain.then(function () { return cloudUpsertAdmin(a).catch(function (e) { console.warn('[Store] 管理员上云失败', a.username, e && e.message); }); });
+      }, Promise.resolve()).then(function () {
+        dirty = true;
+        return doFlush().then(function () { dirty = false; });
+      }).then(function () { return { cloud: rows.length, uploaded: todo.length }; });
+    });
+  }
   // 商品按累计 JSON 体积切批：国内网络直连 Supabase 海外节点时，整包(含全部 base64 图)越大越易被
   // 中断/超时；切成每批 ≤400KB（通常 1~2 件带图商品）小包，弱网成功率显著提高。
   function chunkGoodsRows(rows, maxBytes) {
@@ -1072,6 +1171,9 @@ var Store = (function () {
     cloudUpsertGoods: cloudUpsertGoods, cloudDeleteGoods: cloudDeleteGoods,
     cloudUpsertCat: cloudUpsertCat, cloudDeleteCat: cloudDeleteCat,
     cloudUpsertBulletin: cloudUpsertBulletin, cloudDeleteBulletin: cloudDeleteBulletin,
+    // 云端管理员账号同步
+    hashAdminPwd: hashAdminPwd, verifyAdminPwd: verifyAdminPwd,
+    cloudUpsertAdmin: cloudUpsertAdmin, cloudDeleteAdmin: cloudDeleteAdmin, cloudSyncAdmins: cloudSyncAdmins,
     lastCloudPullAt: function () { return lastCloudPullAt; }
   };
 })();
@@ -1134,6 +1236,10 @@ function enterAdmin(admin){
   document.getElementById('adminUser').innerText=curUser;
   document.querySelectorAll('.super-only').forEach(function(el){el.style.display=(curRole==='super')?'':'none';});
   switchTab('cat');initAdmin();
+  // 超管进后台自动对账管理员账号：本机账号补传云端、云端账号合并本机（静默，失败只告警不打扰）
+  if((admin.role||'normal')==='super'&&Store.cloudSyncAdmins){
+    Store.cloudSyncAdmins().then(function(r){if(r&&r.uploaded>0)console.log('[管理员] 已同步 '+r.uploaded+' 个账号到云端');}).catch(function(e){console.warn('管理员账号云端对账失败',e);});
+  }
 }
 function autoLogin(){
   try{
@@ -1143,16 +1249,39 @@ function autoLogin(){
     enterAdmin(admin);
   }catch(e){}
 }
+function loginSucceed(admin,p){
+  if(document.getElementById('rememberCheck').checked){localStorage.setItem('admin_remember',btoa(JSON.stringify({u:admin.username,p:p})));}else{localStorage.removeItem('admin_remember');}
+  try{localStorage.setItem('admin_session',btoa(JSON.stringify({u:admin.username,r:admin.role||'normal',t:Date.now()})));}catch(e){}
+  enterAdmin(admin);
+}
+// 账号匹配：先明文(本机老账号)，再 PBKDF2 哈希(云端同步下来的账号)；返回 Promise<admin|null>
+function matchAdmin(u,p){
+  var db=Store.get();
+  var admin=(db.adminAccounts||[]).find(function(a){return a.username.toLowerCase()===u;});
+  if(!admin)return Promise.resolve(null);
+  if(admin.pwd&&admin.pwd===p)return Promise.resolve(admin);
+  if(admin.pwdHash&&Store.verifyAdminPwd)return Store.verifyAdminPwd(p,admin).then(function(ok){return ok?admin:null;});
+  return Promise.resolve(null);
+}
 function doLogin(){
   var u=document.getElementById('loginUser').value.trim().toLowerCase();
   var p=document.getElementById('loginPwd').value.trim();
   if(!u||!p){showToast('请输入账号和密码');return;}
-  var db=Store.get();
-  var admin=db.adminAccounts.find(function(a){return a.username.toLowerCase()===u&&a.pwd===p;});
-  if(!admin){showToast('账号或者密码错误，请检查');return;}
-  if(document.getElementById('rememberCheck').checked){localStorage.setItem('admin_remember',btoa(JSON.stringify({u:admin.username,p:p})));}else{localStorage.removeItem('admin_remember');}
-  try{localStorage.setItem('admin_session',btoa(JSON.stringify({u:admin.username,r:admin.role||'normal',t:Date.now()})));}catch(e){}
-  enterAdmin(admin);
+  matchAdmin(u,p).then(function(admin){
+    if(admin)return loginSucceed(admin,p);
+    // 本机没匹配上（新设备/云端账号还没拉到）：主动同步一次云端再判，仅补拉一次防死循环
+    if(!doLogin._cloudTried&&Store.cloudPull){
+      doLogin._cloudTried=true;showToast('正在从云端同步管理员账号…');
+      return Store.cloudPull().then(function(r){
+        // 若启动同步仍在进行(返回null)，稍候再拉一次
+        if(r===null)return new Promise(function(res){setTimeout(res,1500);}).then(function(){return Store.cloudPull();});
+        return r;
+      }).then(function(){return matchAdmin(u,p);}).then(function(a2){
+        if(a2)loginSucceed(a2,p);else showToast('账号或者密码错误，请检查');
+      }).catch(function(){showToast('账号或者密码错误，请检查');});
+    }
+    showToast('账号或者密码错误，请检查');
+  });
 }
 function doLogout(){try{localStorage.removeItem('admin_session');}catch(e){}localStorage.removeItem('admin_remember');location.reload();}
 function goFront(){window.location.href='index.html';}
@@ -1346,10 +1475,23 @@ function changePwd(){
   var oldP=document.getElementById('oldPwd').value.trim();var newP=document.getElementById('newPwd').value.trim();var confirmP=document.getElementById('confirmPwd').value.trim();
   var db=Store.get();var admin=db.adminAccounts.find(function(a){return a.username===curUser;});
   if(!admin){showToast('账号不存在');return;}
-  if(oldP!==admin.pwd){showToast('原密码错误');return;}
   if(newP.length<6){showToast('新密码至少6位');return;}
   if(newP!==confirmP){showToast('两次输入新密码不一致');return;}
-  admin.pwd=newP;persist(function(){showToast('密码修改成功，请重新登录');setTimeout(function(){doLogout();},1500);});
+  // 原密码校验：本机明文直接比；云端来源账号(只有哈希)走 PBKDF2 异步校验
+  var oldOk;
+  if(admin.pwd){oldOk=Promise.resolve(oldP===admin.pwd);}
+  else if(admin.pwdHash&&Store.verifyAdminPwd){oldOk=Store.verifyAdminPwd(oldP,admin);}
+  else{oldOk=Promise.resolve(false);}
+  oldOk.then(function(ok){
+    if(!ok){showToast('原密码错误');return;}
+    admin.pwd=newP; // 本机留明文(离线可登)，云端只同步哈希
+    persist(function(){
+      showToast('密码修改成功，正在同步云端…');
+      var done=function(){setTimeout(function(){doLogout();},1200);};
+      if(Store.cloudUpsertAdmin){Store.cloudUpsertAdmin(admin).then(done).catch(function(e){console.warn('改密云端同步失败',e);showToast('本机密码已改，云端同步失败：'+(e&&e.message?e.message:'网络异常'));done();});}
+      else done();
+    });
+  });
 }
 
 /* ---------- 存储维护 / 备份恢复 ---------- */
@@ -1446,8 +1588,8 @@ function restoreSnapshot(){
 
 /* ---------- 管理员 ---------- */
 function renderAdminList(){var db=Store.get();var wrap=document.getElementById('adminList');if(db.adminAccounts.length===0){wrap.innerHTML='<div class="empty"><div class="empty-icon">👥</div><div class="empty-text">暂无管理员</div></div>';return;}var html='';db.adminAccounts.forEach(function(a){var roleBadge=a.role==='super'?'<span class="status-badge normal">超级管理员</span>':'<span class="status-badge" style="background:#e8f5f3;color:var(--primary);">普通管理员</span>';var delBtn=a.username===curUser?'':'<div class="cat-del" onclick="delAdmin(\''+a.username+'\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></div>';html+='<div class="cat-list-item"><span class="cat-name">'+a.username+' '+roleBadge+'</span>'+delBtn+'</div>';});wrap.innerHTML=html;}
-function addAdmin(){var u=document.getElementById('newAdminUser').value.trim().toLowerCase();var p=document.getElementById('newAdminPwd').value.trim();if(!u||!p){showToast('请输入账号和密码');return;}if(p.length<6){showToast('密码至少6位');return;}var db=Store.get();if(db.adminAccounts.find(function(a){return a.username.toLowerCase()===u;})){showToast('该账号已存在');return;}db.adminAccounts.push({username:u,pwd:p,role:'normal'});persist(function(){document.getElementById('newAdminUser').value='';document.getElementById('newAdminPwd').value='';renderAdminList();showToast('管理员添加成功');});}
-function delAdmin(username){if(!confirm('确定删除该管理员？'))return;var db=Store.get();db.adminAccounts=db.adminAccounts.filter(function(a){return a.username!==username;});persist(function(){renderAdminList();showToast('已删除');});}
+function addAdmin(){var u=document.getElementById('newAdminUser').value.trim().toLowerCase();var p=document.getElementById('newAdminPwd').value.trim();if(!u||!p){showToast('请输入账号和密码');return;}if(p.length<6){showToast('密码至少6位');return;}var db=Store.get();if(db.adminAccounts.find(function(a){return a.username.toLowerCase()===u;})){showToast('该账号已存在');return;}var acc={username:u,pwd:p,role:'normal'};db.adminAccounts.push(acc);persist(function(){document.getElementById('newAdminUser').value='';document.getElementById('newAdminPwd').value='';renderAdminList();showToast('管理员添加成功，正在同步到云端…');if(Store.cloudUpsertAdmin)Store.cloudUpsertAdmin(acc).then(function(){showToast('管理员添加成功，其他设备刷新后可登录');}).catch(function(e){console.warn('管理员云端同步失败',e);showToast('本机已添加，但云端同步失败：'+(e&&e.message?e.message:'网络异常')+'，可稍后重进后台自动补传');});});}
+function delAdmin(username){if(!confirm('确定删除该管理员？其他设备也将无法登录该账号'))return;var db=Store.get();db.adminAccounts=db.adminAccounts.filter(function(a){return a.username!==username;});persist(function(){renderAdminList();showToast('已删除');if(Store.cloudDeleteAdmin)Store.cloudDeleteAdmin(username).catch(function(e){console.warn('管理员云端删除失败',e);showToast('本机已删除，但云端删除失败，可稍后重试');});});}
 
 /* ---------- 举报 / 封禁 ---------- */
 function renderReports(){
