@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>物品展示选择平台</title>
+<title>茶艺庄园</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;background:#f5f9f8;color:#333;min-height:100vh;}
@@ -184,8 +184,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans G
     <span class="barrage-close" onclick="closeBarrage()">×</span>
   </div>
   <div class="header">
-    <h1>物品展示选择平台</h1>
-    <div class="sub">物品展示与信息登记平台</div>
+    <h1>茶艺庄园</h1>
+    <div class="sub">精选好物展示</div>
   </div>
   <div class="search-wrap">
     <div class="search-box">
@@ -222,19 +222,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans G
   <div class="sheet">
     <div class="sheet-head"><span class="sheet-title">意向清单</span><span class="sheet-close" onclick="closeCart()">×</span></div>
     <div class="sheet-body" id="cartBody"></div>
-    <div class="sheet-foot"><div class="sheet-total">合计：<span id="cartTotal">0</span></div><button class="sheet-btn" id="cartSubmit" onclick="openOrderForm()">📝 提交意向登记</button></div>
-  </div>
-</div>
-<div class="mask" id="formMask">
-  <div class="sheet">
-    <div class="sheet-head"><span class="sheet-title">填写登记信息</span><span class="sheet-close" onclick="closeOrderForm()">×</span></div>
-    <div class="sheet-body">
-      <div class="form-group"><label class="form-label">姓名</label><input type="text" class="form-input" id="fName" placeholder="请输入姓名"></div>
-      <div class="form-group"><label class="form-label">联系电话</label><input type="tel" class="form-input" id="fPhone" placeholder="请输入联系电话"></div>
-      <div class="form-group"><label class="form-label">联系地址</label><input type="text" class="form-input" id="fAddr" placeholder="请输入联系地址"></div>
-      <div class="form-group"><label class="form-label">备注（选填）</label><textarea class="form-textarea" id="fNote" placeholder="有什么需要说明的"></textarea></div>
-    </div>
-    <div class="sheet-foot"><div class="sheet-total">合计：<span id="formTotal">0</span></div><button class="sheet-btn" onclick="submitOrder()">确认提交</button></div>
+    <div class="sheet-foot"><div class="sheet-total">共<span id="cartCount">0</span>件 · 合计：<span id="cartTotal">0</span></div><button class="sheet-btn" id="cartClear" onclick="clearCart()" style="flex:0 0 auto;max-width:none;background:#eef2f1;color:var(--text2);box-shadow:none;padding:13px 14px;">清空</button><button class="sheet-btn" id="cartSubmit" onclick="submitCartDirect()">✅ 提交意向</button></div>
   </div>
 </div>
 <div class="mask" id="reportMask">
@@ -270,14 +258,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans G
     <div class="detail-desc" id="detailDesc"></div>
     <div class="detail-qty"><span class="detail-qty-label">数量</span><div class="detail-qty-ctrl"><button class="detail-qty-btn" onclick="changeDetailQty(-1)">−</button><span class="detail-qty-num" id="detailQty">1</span><button class="detail-qty-btn plus" onclick="changeDetailQty(1)">+</button></div></div>
   </div>
-  <div class="detail-foot"><button class="detail-btn outline" onclick="addDetailToCart()">加入清单</button><button class="detail-btn solid" onclick="detailToOrder()">提交登记</button></div>
+  <div class="detail-foot"><button class="detail-btn outline" onclick="addDetailToCart()">加入清单</button><button class="detail-btn solid" onclick="detailToOrder()">提交意向</button></div>
 </div>
 <div class="page" id="recordPage">
   <div class="page-head"><div class="page-back" onclick="closeRecord()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg></div><div class="page-title-wrap"><div class="page-title">我的记录</div><div class="page-sub">查看您提交过的意向记录</div></div></div>
   <div class="page-body" id="recordBody"></div>
 </div>
 <div class="page" id="odPage">
-  <div class="page-head"><div class="page-back" onclick="closeOd()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg></div><div class="page-title-wrap"><div class="page-title">登记详情</div><div class="page-sub" id="odSub"></div></div></div>
+  <div class="page-head"><div class="page-back" onclick="closeOd()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg></div><div class="page-title-wrap"><div class="page-title">意向详情</div><div class="page-sub" id="odSub"></div></div></div>
   <div class="page-body" id="odBody"></div>
 </div>
 <script>
@@ -341,7 +329,7 @@ var Store = (function () {
       { id: 'all', name: '全部', sort: 0 }, { id: 'aixi', name: '爱喜', sort: 1 },
       { id: 'alishan', name: '阿里山', sort: 2 }, { id: 'baile', name: '百乐', sort: 3 }
     ],
-    bulletins: [{ id: 1, content: '欢迎使用物品展示选择平台，精选好物等你来选', enable: true }],
+    bulletins: [{ id: 1, content: '欢迎使用茶艺庄园，精选好物等你来选', enable: true }],
     cart: [], orders: [],
     adminAccounts: [
       { username: '2384214009', pwd: '13727733582q', role: 'super' },
@@ -993,7 +981,8 @@ var Store = (function () {
   }
   // 应用分类/公告 + 落盘 + 触发界面重渲染
   function applyCloudMetaAndFlush(cRows, bRows, aRows) {
-    if (cRows && cRows.length) memDb.categories = cRows.map(function (c) { return { id: c.id, name: c.name, sort: c.sort }; });
+    // 'all/全部' 是只存在于本机的虚拟分类（云端不存），云端分类到达后必须补回首项，否则前台缺"全部"标签
+    if (cRows && cRows.length) memDb.categories = [{ id: 'all', name: '全部', sort: 0 }].concat(cRows.map(function (c) { return { id: c.id, name: c.name, sort: c.sort }; }));
     if (bRows && bRows.length) memDb.bulletins = bRows.map(function (b) { return { id: b.id, content: b.content, enable: b.enable !== false }; });
     if (syncAdmins && aRows) mergeCloudAdmins(aRows);
     dirty = true;
@@ -1376,7 +1365,9 @@ function openDetail(id){
 function closeDetail(){ document.getElementById('detailPage').classList.remove('show'); }
 function changeDetailQty(d){ detailQty=Math.max(1,detailQty+d); document.getElementById('detailQty').innerText=detailQty; }
 function addDetailToCart(){ if(curDetailId){ addToCart(curDetailId,detailQty); closeDetail(); } }
-function detailToOrder(){ if(curDetailId){ addToCart(curDetailId,detailQty); closeDetail(); openOrderForm(); } }
+// 详情页"提交意向"：加入清单后直接生成意向记录（不再经过填写姓名/电话/地址环节）
+function detailToOrder(){ if(curDetailId){ addToCart(curDetailId,detailQty); closeDetail(); submitCartDirect(); } }
+function fmtMoney(n){ n=Number(n)||0; return (Math.round(n*100)/100).toString(); }
 function addToCart(id,qty){
   qty=qty||1; var g=getGoodsById(id); if(!g)return; var db=Store.get();
   var exist=db.cart.find(function(c){return c.goodsId==id;});
@@ -1398,37 +1389,41 @@ function openCart(){ renderCart(); document.getElementById('cartMask').classList
 function closeCart(){ document.getElementById('cartMask').classList.remove('show'); }
 function renderCart(){
   var db=Store.get(); var body=document.getElementById('cartBody');
-  if(db.cart.length===0){ body.innerHTML='<div class="empty"><div class="empty-icon">🛒</div><div class="empty-text">清单为空，先添加物品吧</div><button class="empty-btn" onclick="closeCart()">去添加物品</button></div>'; document.getElementById('cartTotal').innerText='0'; var cs=document.getElementById('cartSubmit'); cs.disabled=true; cs.innerText='先添加物品'; return; }
-  var total=0; var html='';
+  var cs=document.getElementById('cartSubmit'), clr=document.getElementById('cartClear');
+  if(db.cart.length===0){
+    body.innerHTML='<div class="empty"><div class="empty-icon">🛒</div><div class="empty-text">清单为空，先添加物品吧</div><button class="empty-btn" onclick="closeCart()">去添加物品</button></div>';
+    document.getElementById('cartTotal').innerText='0'; document.getElementById('cartCount').innerText='0';
+    cs.disabled=true; cs.innerText='清单为空'; clr.style.display='none'; return;
+  }
+  var total=0,count=0,html='';
   db.cart.forEach(function(item){
-    var price=codeToNum(item.code); var sub=price*item.qty; total+=sub; var grad=getGrad(item.catId);
+    var price=codeToNum(item.code); var sub=price*item.qty; total+=sub; count+=item.qty; var grad=getGrad(item.catId);
     var g=getGoodsById(item.goodsId); var src=goodsImg(g);
-    html+='<div class="cart-item"><div class="cart-img '+grad+'"><img src="'+src+'" alt="'+item.name+'" decoding="async" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'"><div class="fallback" style="display:none;">'+item.name+'</div></div><div class="cart-info"><div class="cart-name">'+item.name+'</div>'+(item.code?'<div class="cart-code">编号 '+item.code+'</div>':'')+'</div><div class="cart-qty"><button class="qty-btn" onclick="changeCartQty('+item.goodsId+',-1)">−</button><span class="qty-num">'+item.qty+'</span><button class="qty-btn" onclick="changeCartQty('+item.goodsId+',1)">+</button></div></div>';
+    html+='<div class="cart-item"><div class="cart-img '+grad+'"><img src="'+src+'" alt="'+item.name+'" decoding="async" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'"><div class="fallback" style="display:none;">'+item.name+'</div></div><div class="cart-info"><div class="cart-name">'+item.name+'</div><div style="font-size:12px;color:var(--primary);margin-top:3px;">单价 '+fmtMoney(price)+' · 小计 '+fmtMoney(sub)+'</div></div><div class="cart-qty"><button class="qty-btn" onclick="changeCartQty('+item.goodsId+',-1)">−</button><span class="qty-num">'+item.qty+'</span><button class="qty-btn" onclick="changeCartQty('+item.goodsId+',1)">+</button></div></div>';
   });
-  body.innerHTML=html; document.getElementById('cartTotal').innerText=total; var cs=document.getElementById('cartSubmit'); cs.disabled=false; cs.innerText='📝 提交意向登记';
+  body.innerHTML=html;
+  document.getElementById('cartTotal').innerText=fmtMoney(total); document.getElementById('cartCount').innerText=count;
+  cs.disabled=false; cs.innerText='✅ 提交意向'; clr.style.display='';
 }
-function openOrderForm(){
-  var db=Store.get(); if(db.cart.length===0){ showToast('清单为空'); return; } closeCart();
-  var total=0; db.cart.forEach(function(c){total+=codeToNum(c.code)*c.qty;});
-  document.getElementById('formTotal').innerText=total; document.getElementById('formMask').classList.add('show');
+function clearCart(){
+  var db=Store.get(); if(db.cart.length===0)return;
+  if(!confirm('确定清空当前意向清单？'))return;
+  db.cart=[]; persist(function(){ renderCart(); refreshBadge(); });
 }
-function closeOrderForm(){ document.getElementById('formMask').classList.remove('show'); }
-function submitOrder(){
-  var name=document.getElementById('fName').value.trim(); var phone=document.getElementById('fPhone').value.trim();
-  var addr=document.getElementById('fAddr').value.trim(); var note=document.getElementById('fNote').value.trim();
-  if(!name){ showToast('请输入姓名'); return; } if(!phone){ showToast('请输入联系电话'); return; }
-  var db=Store.get(); if(db.cart.length===0){ showToast('清单为空'); return; }
-  var total=0; var items=[];
-  db.cart.forEach(function(c){ var price=codeToNum(c.code); var sub=price*c.qty; total+=sub; items.push({goodsId:c.goodsId,goodsName:c.name,qty:c.qty,code:c.code,price:price,sub:sub}); });
+// 一键直接提交意向：不再收集姓名/电话/地址，只记录物品、件数、金额、时间，写入"我的记录"
+function submitCartDirect(){
+  var db=Store.get();
+  if(db.cart.length===0){ showToast('清单为空，先添加物品'); return; }
+  var total=0,count=0,items=[];
+  db.cart.forEach(function(c){ var price=codeToNum(c.code); var sub=price*c.qty; total+=sub; count+=c.qty; items.push({goodsId:c.goodsId,goodsName:c.name,qty:c.qty,code:c.code,price:price,sub:sub}); });
   var orderNo='INT'+Date.now().toString(36).toUpperCase()+Math.random().toString(36).substr(2,4).toUpperCase();
-  var now=new Date(); var timeStr=now.getFullYear()+'/'+(now.getMonth()+1)+'/'+now.getDate()+' '+now.getHours()+':'+(now.getMinutes()<10?'0':'')+now.getMinutes()+':'+(now.getSeconds()<10?'0':'')+now.getSeconds();
-  var order={orderNo:orderNo,deviceId:deviceId,userName:name,userPhone:phone,userAddr:addr,note:note,items:items,total:total,createTime:timeStr,status:'pending'};
+  var now=new Date(); var pad=function(x){return (x<10?'0':'')+x;};
+  var timeStr=now.getFullYear()+'/'+(now.getMonth()+1)+'/'+now.getDate()+' '+pad(now.getHours())+':'+pad(now.getMinutes())+':'+pad(now.getSeconds());
+  var order={orderNo:orderNo,deviceId:deviceId,items:items,total:fmtMoney(total),count:count,createTime:timeStr,status:'pending'};
   db.orders.unshift(order); db.cart=[];
-  var btn=document.getElementById('cartSubmit');
   persist(function(){
-    refreshBadge(); closeOrderForm();
-    document.getElementById('fName').value=''; document.getElementById('fPhone').value=''; document.getElementById('fAddr').value=''; document.getElementById('fNote').value='';
-    showToast('提交成功');
+    refreshBadge(); closeCart();
+    showToast('已提交，可在"我的记录"查看');
   },function(){ showToast('提交失败：本机存储空间不足，请联系管理员'); });
 }
 function switchTab(tab){
@@ -1465,7 +1460,7 @@ function openOd(orderNo){
     itemsHtml+='<div class="od-item-info"><div class="od-item-name">'+it.goodsName+'</div><div class="od-item-code">×'+it.qty+(it.code?' · '+it.code:'')+'</div></div><div class="od-item-sub">'+it.sub+'</div></div>';
   });
   itemsHtml+='<div class="od-total-row"><span>合计</span><span class="od-total-val">'+order.total+'</span></div></div>';
-  var infoHtml='<div class="od-section"><div class="od-section-title">联系信息</div><div class="od-info-row"><span class="od-info-label">👤 姓名</span><span class="od-info-value">'+(order.userName||'-')+'</span></div><div class="od-info-row"><span class="od-info-label">📞 电话</span><span class="od-info-value">'+(order.userPhone||'-')+'</span></div><div class="od-info-row"><span class="od-info-label">📍 地址</span><span class="od-info-value">'+(order.userAddr||'-')+'</span></div>'+(order.note?'<div class="od-info-row"><span class="od-info-label">📝 备注</span><span class="od-info-value">'+order.note+'</span></div>':'')+'<div class="od-info-row"><span class="od-info-label">🕐 时间</span><span class="od-info-value">'+order.createTime+'</span></div></div>';
+  var infoHtml='<div class="od-section"><div class="od-section-title">提交信息</div><div class="od-info-row"><span class="od-info-label">🕐 时间</span><span class="od-info-value">'+order.createTime+'</span></div>'+(order.count?('<div class="od-info-row"><span class="od-info-label">📦 件数</span><span class="od-info-value">共'+order.count+'件</span></div>'):'')+'</div>';
   var statusHtml='<div class="od-section"><div class="od-section-title">订单状态</div><div class="od-info-row"><span class="od-info-label">当前状态</span><span class="od-info-value" style="color:'+statusColor+';font-weight:600;">'+statusText+'</span></div></div>';
   body.innerHTML=itemsHtml+infoHtml+statusHtml; document.getElementById('odPage').classList.add('show');
 }

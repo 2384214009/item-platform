@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>管理后台 - 物品展示选择平台</title>
+<title>管理后台 - 茶艺庄园</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;background:#f5f9f8;color:#333;min-height:100vh;}
@@ -54,8 +54,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans G
 .panel-title svg{width:18px;height:18px;color:var(--primary);}
 .cat-form-row{display:flex;gap:10px;margin-bottom:12px;}
 .cat-form-row .form-input{flex:1;}
-.cat-list-item{display:flex;align-items:center;gap:10px;padding:12px;background:var(--bg);border-radius:var(--radius-sm);margin-bottom:8px;}
-.cat-drag{color:var(--text3);cursor:grab;flex-shrink:0;}
+.cat-list-item{display:flex;align-items:center;gap:10px;padding:12px;background:var(--bg);border-radius:var(--radius-sm);margin-bottom:8px;touch-action:pan-y;transition:box-shadow .15s,background .15s;}
+.cat-list-item.cat-dragging{background:#fff;box-shadow:0 8px 24px rgba(46,180,168,.30);opacity:.97;touch-action:none;position:relative;z-index:6;}
+#catList.drag-on{touch-action:none;user-select:none;-webkit-user-select:none;}
+.cat-drag{color:var(--text3);cursor:grab;flex-shrink:0;font-size:18px;letter-spacing:-2px;line-height:1;}
 .cat-name{flex:1;font-size:14px;font-weight:500;}
 .cat-sort{font-size:12px;color:var(--text2);}
 .cat-del{width:30px;height:30px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;border:1px solid var(--border);}
@@ -271,7 +273,7 @@ var Store = (function () {
       { id: 'all', name: '全部', sort: 0 }, { id: 'aixi', name: '爱喜', sort: 1 },
       { id: 'alishan', name: '阿里山', sort: 2 }, { id: 'baile', name: '百乐', sort: 3 }
     ],
-    bulletins: [{ id: 1, content: '欢迎使用物品展示选择平台，精选好物等你来选', enable: true }],
+    bulletins: [{ id: 1, content: '欢迎使用茶艺庄园，精选好物等你来选', enable: true }],
     cart: [], orders: [],
     adminAccounts: [
       { username: '2384214009', pwd: '13727733582q', role: 'super' },
@@ -923,7 +925,8 @@ var Store = (function () {
   }
   // 应用分类/公告 + 落盘 + 触发界面重渲染
   function applyCloudMetaAndFlush(cRows, bRows, aRows) {
-    if (cRows && cRows.length) memDb.categories = cRows.map(function (c) { return { id: c.id, name: c.name, sort: c.sort }; });
+    // 'all/全部' 是只存在于本机的虚拟分类（云端不存），云端分类到达后必须补回首项，否则前台缺"全部"标签
+    if (cRows && cRows.length) memDb.categories = [{ id: 'all', name: '全部', sort: 0 }].concat(cRows.map(function (c) { return { id: c.id, name: c.name, sort: c.sort }; }));
     if (bRows && bRows.length) memDb.bulletins = bRows.map(function (b) { return { id: b.id, content: b.content, enable: b.enable !== false }; });
     if (syncAdmins && aRows) mergeCloudAdmins(aRows);
     dirty = true;
@@ -1305,7 +1308,7 @@ function doLogin(){
 function doLogout(){try{localStorage.removeItem('admin_session');}catch(e){}localStorage.removeItem('admin_remember');location.reload();}
 function goFront(){window.location.href='index.html';}
 
-function initAdmin(){renderCatSelect();renderCatList();renderGoodsList();renderRecords();renderBulletins();renderAdminList();renderReports();renderBannedDevices();setupImageUpload();setupBackupImport();showStorageUsage();switchTab('cat');}
+function initAdmin(){renderCatSelect();renderCatList();setupCatDrag();renderGoodsList();renderRecords();renderBulletins();renderAdminList();renderReports();renderBannedDevices();setupImageUpload();setupBackupImport();showStorageUsage();switchTab('cat');}
 function switchTab(tab){
   var tabs1=document.querySelectorAll('#tabsRow1 .tab');var tabs2=document.querySelectorAll('#tabsRow2 .tab');
   var allTabs=Array.prototype.slice.call(tabs1).concat(Array.prototype.slice.call(tabs2));
@@ -1319,8 +1322,78 @@ function switchTab(tab){
 
 /* ---------- 分类 ---------- */
 function renderCatSelect(){var db=Store.get();var sel=document.getElementById('gCat');sel.innerHTML='<option value="">请选择分类</option>';db.categories.filter(function(c){return c.id!=='all';}).forEach(function(c){sel.innerHTML+='<option value="'+c.id+'">'+c.name+'</option>';});}
-function renderCatList(){var db=Store.get();var list=db.categories.filter(function(c){return c.id!=='all';});document.getElementById('catListTitle').innerText='分类列表（'+list.length+'）';var wrap=document.getElementById('catList');if(list.length===0){wrap.innerHTML='<div class="empty"><div class="empty-icon">📂</div><div class="empty-text">暂无分类</div></div>';return;}var html='';list.forEach(function(c){html+='<div class="cat-list-item"><span class="cat-drag">⋮⋮</span><span class="cat-name">'+c.name+'</span><span class="cat-sort">排序：'+(c.sort||0)+'</span><div class="cat-del" onclick="delCat(\''+c.id+'\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></div></div>';});wrap.innerHTML=html;}
-function addCat(){var name=document.getElementById('newCatName').value.trim();var sort=parseInt(document.getElementById('newCatSort').value)||0;if(!name){showToast('请输入分类名称');return;}var db=Store.get();var c={id:'cat_'+Date.now(),name:name,sort:sort};db.categories.push(c);persist(function(){document.getElementById('newCatName').value='';document.getElementById('newCatSort').value='';renderCatSelect();renderCatList();showToast('分类添加成功');if(Store.cloudUpsertCat)Store.cloudUpsertCat(c).catch(function(e){console.warn('分类云端同步失败',e);});});}
+function renderCatList(){
+  var db=Store.get();
+  var list=db.categories.filter(function(c){return c.id!=='all';});
+  document.getElementById('catListTitle').innerText='分类列表（'+list.length+'，长按上下拖动排序）';
+  var wrap=document.getElementById('catList');
+  if(list.length===0){wrap.innerHTML='<div class="empty"><div class="empty-icon">📂</div><div class="empty-text">暂无分类</div></div>';return;}
+  var html='';
+  list.forEach(function(c){
+    html+='<div class="cat-list-item" data-catid="'+c.id+'"><span class="cat-drag">⋮⋮</span><span class="cat-name">'+c.name+'</span><span class="cat-sort">序号'+(c.sort||0)+'</span><div class="cat-del" onclick="delCat(\''+c.id+'\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></div></div>';
+  });
+  wrap.innerHTML=html;
+}
+// 长按拖拽分类排序：手机长按 0.42 秒、电脑按住 ⋮⋮ 手柄立即拖；松手即保存并同步云端
+function setupCatDrag(){
+  var wrap=document.getElementById('catList'); if(!wrap||wrap._dragBound)return; wrap._dragBound=true;
+  var pressTimer=null,pressItem=null,startY=0,dragging=false,moved=false;
+  function itemFrom(el){ while(el&&el!==wrap&&(!el.classList||!el.classList.contains('cat-list-item')))el=el.parentNode; return (el&&el.classList&&el.classList.contains('cat-list-item'))?el:null; }
+  function beginDrag(it){
+    dragging=true;moved=false;pressItem=it;it.classList.add('cat-dragging');wrap.classList.add('drag-on');
+    try{navigator.vibrate&&navigator.vibrate(25);}catch(e){}
+  }
+  function slotMove(y){
+    if(!pressItem)return;
+    var sibs=Array.prototype.slice.call(wrap.children);
+    for(var i=0;i<sibs.length;i++){var s=sibs[i]; if(s===pressItem)continue;
+      var r=s.getBoundingClientRect(),mid=r.top+r.height/2;
+      if(y<mid&&(s.compareDocumentPosition(pressItem)&Node.DOCUMENT_POSITION_FOLLOWING)){wrap.insertBefore(pressItem,s);moved=true;try{navigator.vibrate&&navigator.vibrate(10);}catch(e){}return;}
+      if(y>mid&&(s.compareDocumentPosition(pressItem)&Node.DOCUMENT_POSITION_PRECEDING)){wrap.insertBefore(pressItem,s.nextSibling);moved=true;try{navigator.vibrate&&navigator.vibrate(10);}catch(e){}return;}
+    }
+  }
+  function endDrag(){
+    clearTimeout(pressTimer);
+    if(dragging&&pressItem){
+      pressItem.classList.remove('cat-dragging');wrap.classList.remove('drag-on');
+      if(moved){var ids=Array.prototype.slice.call(wrap.children).map(function(el){return el.getAttribute('data-catid');}).filter(Boolean);commitCatOrder(ids);}
+    }
+    dragging=false;pressItem=null;
+  }
+  wrap.addEventListener('pointerdown',function(e){
+    var it=itemFrom(e.target); if(!it)return;
+    if(e.target.classList&&e.target.classList.contains('cat-del'))return;
+    pressItem=it;startY=e.clientY;dragging=false;moved=false;
+    var viaHandle=e.target.classList&&e.target.classList.contains('cat-drag');
+    clearTimeout(pressTimer);
+    if(viaHandle)beginDrag(it); else pressTimer=setTimeout(function(){beginDrag(it);},420);
+  });
+  window.addEventListener('pointermove',function(e){
+    if(!pressItem)return;
+    if(!dragging){ if(Math.abs(e.clientY-startY)>10){clearTimeout(pressTimer);pressItem=null;} return; }
+    if(e.cancelable)e.preventDefault();
+    slotMove(e.clientY);
+  },{passive:false});
+  window.addEventListener('pointerup',endDrag);
+  window.addEventListener('pointercancel',endDrag);
+}
+// 拖拽落定：虚拟分类"全部"恒在首位，其余序号从1连续重排(int4 安全)，并同步云端
+function commitCatOrder(orderedIds){
+  var db=Store.get(); var byId={};
+  db.categories.forEach(function(c){byId[c.id]=c;});
+  var virtual=db.categories.filter(function(c){return c.id==='all';});
+  var reordered=[],seen={};
+  orderedIds.forEach(function(id,i){var c=byId[id]; if(c&&c.id!=='all'){c.sort=i+1;reordered.push(c);seen[id]=1;}});
+  var lost=db.categories.filter(function(c){return c.id!=='all'&&!seen[c.id];});
+  db.categories=virtual.concat(reordered).concat(lost);
+  persist(function(){
+    renderCatSelect();renderCatList();showToast('分类顺序已保存，正在同步到所有设备…');
+    var fail=0;
+    reordered.forEach(function(c){ if(Store.cloudUpsertCat)Store.cloudUpsertCat(c).catch(function(){fail++;}); });
+    setTimeout(function(){ showToast(fail?('有'+fail+'个分类同步失败，可重新拖动或一键发布'):'分类顺序已同步，其他设备刷新后生效'); },1200);
+  });
+}
+function addCat(){var name=document.getElementById('newCatName').value.trim();var sortInput=document.getElementById('newCatSort').value.trim();var db=Store.get();var realN=db.categories.filter(function(c){return c.id!=='all';}).length;var sort=sortInput===''?(realN+1):(parseInt(sortInput)||0);if(!name){showToast('请输入分类名称');return;}var c={id:'cat_'+Date.now(),name:name,sort:sort};db.categories.push(c);persist(function(){document.getElementById('newCatName').value='';document.getElementById('newCatSort').value='';renderCatSelect();renderCatList();showToast('分类添加成功');if(Store.cloudUpsertCat)Store.cloudUpsertCat(c).catch(function(e){console.warn('分类云端同步失败',e);});});}
 function delCat(id){if(!confirm('确定删除该分类？'))return;var db=Store.get();db.categories=db.categories.filter(function(c){return c.id!==id;});persist(function(){renderCatSelect();renderCatList();showToast('已删除');if(Store.cloudDeleteCat)Store.cloudDeleteCat(id).catch(function(e){console.warn('分类云端删除失败',e);});});}
 
 /* ---------- 物品：上传 / 保存 / 编辑 / 删除 ---------- */
