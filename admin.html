@@ -246,6 +246,8 @@ var Store = (function () {
   var CLOUD_KEY = 'sb_publishable_H9gYwPXXuKQVpH6Q8XCnRw_yZ1dyaPp';
   var cloudSyncWaiters = [];   // 云端数据到达后的重渲染回调
   var cloudPulling = false, lastCloudPullAt = 0;
+  var cloudEverSynced = false;        // 本次会话是否曾成功拉到过云端商品（首拉弱网兜底/界面提示用）
+  var cloudAutoRetried = false;       // 失败后只自动补拉一次，避免弱网下无限重试耗电
   var CLOUD_FP_KEY = 'shop_cloud_fp';   // 云端商品指纹 {id:updated_at}：增量同步依据，避免每次重复拉取全部图片
   /* ===== 云端管理员账号（cloud_admins）：跨设备同步登录账号，密码只存 PBKDF2 哈希、绝不存明文 ===== */
   var ADMIN_PBKDF2_ITER = 100000;       // PBKDF2-HMAC-SHA256 迭代次数
@@ -835,7 +837,7 @@ var Store = (function () {
     var timeoutMs = opts.timeout || 25000;
     var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
     var timer = setTimeout(function () { if (ctrl) ctrl.abort(); }, timeoutMs);
-    var init = { method: opts.method || 'GET', headers: { 'apikey': CLOUD_KEY, 'Authorization': 'Bearer ' + CLOUD_KEY, 'Content-Type': 'application/json' } };
+    var init = { method: opts.method || 'GET', headers: { 'apikey': CLOUD_KEY, 'Authorization': 'Bearer ' + CLOUD_KEY, 'Content-Type': 'application/json' }, cache: 'no-store' };
     if (opts.prefer) init.headers['Prefer'] = opts.prefer;
     if (opts.body !== undefined) init.body = JSON.stringify(opts.body);
     if (ctrl) init.signal = ctrl.signal;
@@ -912,13 +914,25 @@ var Store = (function () {
   // ===== 增量同步：避免每次打开都重复拉取全部商品图（阶段一省流量核心） =====
   function readCloudFp() { try { return JSON.parse(localStorage.getItem(CLOUD_FP_KEY) || 'null') || null; } catch (e) { return null; } }
   function writeCloudFp(rows) { try { var fp = {}; (rows || []).forEach(function (r) { fp[r.id] = r.updated_at; }); localStorage.setItem(CLOUD_FP_KEY, JSON.stringify(fp)); } catch (e) {} }
-  // 完整商品行(含图) → 商品对象，图片写入 imgCache/IDB 并换成 idb 指针
+  // 完整商品行(含图) → 商品对象，图片写入 imgCache/IDB 并换成 idb 指针；
+  // ls 降级模式没有 IDB 大空间，云端来的大图必须强压到约 40KB 内，否则 150 件写不进 localStorage(配额5MB)
+  function shrinkForLs(src) {
+    var edge = 420;
+    function step(q) {
+      return recompress(src, edge, q).then(function (out) {
+        if (out && out.length > 42 * 1024 * 1.37 && edge > 150) { edge = Math.round(edge * 0.8); return step(0.55); }
+        return out;
+      });
+    }
+    return step(0.6);
+  }
   function ingestGoodsRows(rows) {
     var goods = (rows || []).map(rowToGoods), imgJobs = [];
     goods.forEach(function (g) {
       if (isDataUrl(g.img)) {
         var k = imgKeyOf(g.id); imgCache[k] = g.img;
         if (mode === 'idb') { imgJobs.push(idbPut(S_IMG, k, g.img)); g.img = IMG_PREFIX + k; }
+        else { imgJobs.push(shrinkForLs(g.img).then(function (small) { if (small) { g.img = small; imgCache[k] = small; } }).catch(function () {})); }
       }
     });
     return Promise.all(imgJobs).catch(function () {}).then(function () { return goods; });
@@ -930,34 +944,44 @@ var Store = (function () {
     if (bRows && bRows.length) memDb.bulletins = bRows.map(function (b) { return { id: b.id, content: b.content, enable: b.enable !== false }; });
     if (syncAdmins && aRows) mergeCloudAdmins(aRows);
     dirty = true;
-    return doFlush().then(function () {
+    return doFlush().catch(function (e) {
+      // 落盘失败(如 ls 模式配额不足)不阻断本次渲染：内存数据已到，界面照样刷新，下次同步再补落盘
+      console.warn('[Store] 落盘失败，本次先用内存数据渲染', e && e.message);
+    }).then(function () {
       dirty = false;
       cloudSyncWaiters.forEach(function (fn) { try { fn(memDb); } catch (e) { console.error(e); } });
     });
   }
-  // 全量拉取（=改造前逻辑）：首次访问/清缓存/增量异常兜底时使用，保证行为不变、不白屏
+  // 全量拉取（首次访问/清缓存/增量异常兜底）：先拉 11KB 级轻量元数据（弱网稳），
+  // 再按 id 分批≤20 拉含图完整行（每批可独立重试），避免一个 16MB 大请求在弱网下必超时断流
   function cloudPullFull() {
     return Promise.all([
-      cloudReqRetry('cloud_goods?select=*&order=sort.asc.nullslast', { timeout: 40000 }, 2),
+      cloudReqRetry('cloud_goods?select=id,updated_at,sort&order=sort.asc.nullslast', { timeout: 40000 }, 3),
       cloudReqRetry('cloud_categories?select=*&order=sort.asc.nullslast', { timeout: 40000 }, 2),
       cloudReqRetry('cloud_bulletins?select=*', { timeout: 40000 }, 2),
       adminPullJob()
     ]).then(function (res) {
-      var gRows = res[0] || [], cRows = res[1] || [], bRows = res[2] || [], aRows = res[3] || [];
+      var meta = res[0] || [], cRows = res[1] || [], bRows = res[2] || [], aRows = res[3] || [];
       lastCloudPullAt = Date.now();
-      if (!booted || gRows.length === 0) { if (syncAdmins && aRows.length) mergeCloudAdmins(aRows); return { empty: true }; }
-      return ingestGoodsRows(gRows).then(function (goods) {
+      if (!booted || meta.length === 0) { if (syncAdmins && aRows.length) mergeCloudAdmins(aRows); return { empty: true }; }
+      var rank = {}; meta.forEach(function (r, i) { rank[String(r.id)] = i; });
+      var ids = meta.map(function (r) { return Number(r.id); });
+      return fetchGoodsByIds(ids).then(function (goods) {
+        // 分批返回顺序不保证，按元数据(=sort 顺序)重排
+        goods.sort(function (x, y) { var a = rank[String(x.id)], b = rank[String(y.id)]; if (a == null) a = 9e9; if (b == null) b = 9e9; return a - b; });
         memDb.goods = goods;
-        writeCloudFp(gRows);
-        return applyCloudMetaAndFlush(cRows, bRows, aRows);
-      }).then(function () { return { empty: false, count: gRows.length, mode: 'full' }; });
+        return applyCloudMetaAndFlush(cRows, bRows, aRows).then(function () {
+          // 落盘成功后才写指纹：杜绝"主数据没写进去、指纹却已写"导致增量永久误判无变化
+          writeCloudFp(meta);
+        });
+      }).then(function () { return { empty: false, count: meta.length, mode: 'full' }; });
     });
   }
-  // 按 id 批量拉完整商品(含图)，每批≤30，防止 in 列表/URL 过长
+  // 按 id 批量拉完整商品(含图)，每批≤20，防止单请求体积过大在弱网下超时断流（首拉 16MB 教训）
   function fetchGoodsByIds(ids) {
     var jobs = [];
-    for (var i = 0; i < ids.length; i += 30) {
-      var part = ids.slice(i, i + 30);
+    for (var i = 0; i < ids.length; i += 20) {
+      var part = ids.slice(i, i + 20);
       jobs.push(cloudReqRetry('cloud_goods?id=in.(' + part.join(',') + ')&select=*', { timeout: 60000 }, 2));
     }
     return Promise.all(jobs).then(function (arr) { var all = []; arr.forEach(function (a) { if (a) all = all.concat(a); }); return ingestGoodsRows(all); });
@@ -974,22 +998,24 @@ var Store = (function () {
       lastCloudPullAt = Date.now();
       if (!booted || meta.length === 0) { if (syncAdmins && aRows.length) mergeCloudAdmins(aRows); return { empty: true }; }
       var fp = readCloudFp();
-      var changed = [], cloudIds = {};
+      var localMap = {};
+      (memDb.goods || []).forEach(function (g) { localMap[String(g.id)] = g; });
+      var needFetch = {}, cloudIds = {};
       meta.forEach(function (r) {
         var sid = String(r.id); cloudIds[sid] = true;
-        if (!fp || fp[sid] === undefined || fp[sid] !== r.updated_at) changed.push(Number(r.id));
+        // 指纹缺失/不一致 或 本地根本没有这件商品（指纹与本地数据脱节时的自愈，防止永久拉不到）
+        if (!fp || fp[sid] === undefined || fp[sid] !== r.updated_at || !localMap[sid]) needFetch[sid] = Number(r.id);
       });
+      var changed = Object.keys(needFetch).map(function (sid) { return needFetch[sid]; });
       var removed = [];
       if (fp) Object.keys(fp).forEach(function (sid) { if (!cloudIds[sid]) removed.push(Number(sid)); });
-      // 无新增/变更/删除 → 商品与图片完全不动，仅顺手更新分类/公告/管理员（近乎零流量）
+      // 无新增/变更/删除/缺失 → 商品与图片完全不动，仅顺手更新分类/公告/管理员（近乎零流量）
       if (changed.length === 0 && removed.length === 0) {
         return applyCloudMetaAndFlush(cRows, bRows, aRows).then(function () { return { empty: false, count: meta.length, mode: 'cached' }; });
       }
       return fetchGoodsByIds(changed).then(function (changedGoods) {
-        var changedMap = {}, localMap = {};
+        var changedMap = {}, result = [], delJobs = [];
         changedGoods.forEach(function (g) { changedMap[String(g.id)] = g; });
-        (memDb.goods || []).forEach(function (g) { localMap[String(g.id)] = g; });
-        var result = [], delJobs = [];
         meta.forEach(function (r) {
           var sid = String(r.id);
           if (changedMap[sid]) result.push(changedMap[sid]);
@@ -1000,8 +1026,11 @@ var Store = (function () {
           if (old && isPointer(old.img)) delJobs.push(idbDel(S_IMG, imgKeyOf(id)).catch(function () {}));
         });
         memDb.goods = result;
-        writeCloudFp(meta);
-        return Promise.all(delJobs).catch(function () {}).then(function () { return applyCloudMetaAndFlush(cRows, bRows, aRows); });
+        return Promise.all(delJobs).catch(function () {}).then(function () {
+          return applyCloudMetaAndFlush(cRows, bRows, aRows);
+        }).then(function () {
+          writeCloudFp(meta); // 落盘成功后才写指纹
+        });
       }).then(function () { return { empty: false, count: meta.length, mode: 'incremental', changed: changed.length, removed: removed.length }; });
     });
   }
@@ -1009,10 +1038,23 @@ var Store = (function () {
   function cloudPull() {
     if (cloudPulling) return Promise.resolve(null);
     cloudPulling = true;
-    var done = function (r) { cloudPulling = false; return r; };
+    var done = function (r) {
+      cloudPulling = false;
+      if (r && r.empty === false) cloudEverSynced = true;
+      else if (!cloudEverSynced && !cloudAutoRetried) {
+        // 首拉失败/拿到空(弱网断流)：10 秒后自动再补一次，无需用户手动刷新
+        cloudAutoRetried = true;
+        setTimeout(function () { try { cloudPull().catch(function () {}); } catch (e) {} }, 10000);
+      }
+      return r;
+    };
     var fail = function (e) {
       cloudPulling = false;
       console.warn('[Store] 云端拉取失败，使用本机缓存数据', e && e.message);
+      if (!cloudEverSynced && !cloudAutoRetried) {
+        cloudAutoRetried = true;
+        setTimeout(function () { try { cloudPull().catch(function () {}); } catch (e) {} }, 10000);
+      }
       return { error: e && e.message };
     };
     if (!readCloudFp()) return cloudPullFull().then(done, fail);
@@ -1190,11 +1232,11 @@ var Store = (function () {
     setAdminMode: setAdminMode,
     hashAdminPwd: hashAdminPwd, verifyAdminPwd: verifyAdminPwd,
     cloudUpsertAdmin: cloudUpsertAdmin, cloudDeleteAdmin: cloudDeleteAdmin, cloudSyncAdmins: cloudSyncAdmins,
-    lastCloudPullAt: function () { return lastCloudPullAt; }
+    lastCloudPullAt: function () { return lastCloudPullAt; },
+    cloudEverSynced: function () { return cloudEverSynced; },
+    cloudRetry: function () { cloudAutoRetried = false; return cloudPull(); }
   };
 })();
-
-
 /* ================== 管理后台业务逻辑（基于 Store 重构） ================== */
 try { if (typeof Store !== 'undefined' && Store.setAdminMode) Store.setAdminMode(true); } catch (e) {}
 var curUser='',curRole='normal',editGoodsId=null,recordFilter='all',hasUploadedImage=false,pendingImgDataUrl='',uploading=false;
