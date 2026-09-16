@@ -1524,7 +1524,7 @@ function renderRecordList(){
       var thumb='<div class="order-item-thumb '+grad+'">';
       if(src){thumb+='<img src="'+src+'" alt="" decoding="async" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">';}
       thumb+='<div class="fallback" style="display:'+(src?'none':'flex')+';">'+it.goodsName+'</div></div>';
-      itemsHtml+='<div class="order-item-row">'+thumb+'<div class="order-item-main"><div class="order-item-name">'+it.goodsName+' × '+it.qty+'</div>'+(it.code?'<div class="order-item-code">编号 '+it.code+'</div>':'')+'</div><span class="order-item-price">'+(it.sub!=null?it.sub:'')+'</span></div>';
+      itemsHtml+='<div class="order-item-row">'+thumb+'<div class="order-item-main"><div class="order-item-name">'+it.goodsName+' × '+it.qty+'</div></div><span class="order-item-price">'+(it.sub!=null?it.sub:'')+'</span></div>';
     });
     html+='<div class="order-card" onclick="openOd(\''+order.orderNo+'\')"><div class="order-card-head"><span class="order-no">'+order.orderNo+'</span><span class="order-status '+statusClass+'">'+statusText+'</span></div><div class="order-items">'+itemsHtml+'</div><div class="order-total-row"><span class="order-total-label">合计</span><span class="order-total-val">'+order.total+'</span></div><div class="order-meta">'+order.createTime+' · 共'+count+'件</div></div>';
   });
@@ -1541,7 +1541,7 @@ function openOd(orderNo){
     itemsHtml+='<div class="od-item"><div class="od-item-img '+grad+'">';
     if(src){ itemsHtml+='<img src="'+src+'" alt="" decoding="async" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">'; }
     itemsHtml+='<div class="fallback" style="display:'+(src?'none':'flex')+';">'+it.goodsName+'</div></div>';
-    itemsHtml+='<div class="od-item-info"><div class="od-item-name">'+it.goodsName+'</div><div class="od-item-code">×'+it.qty+(it.code?' · '+it.code:'')+'</div></div><div class="od-item-sub">'+it.sub+'</div></div>';
+    itemsHtml+='<div class="od-item-info"><div class="od-item-name">'+it.goodsName+'</div><div class="od-item-code">×'+it.qty+'</div></div><div class="od-item-sub">'+it.sub+'</div></div>';
   });
   itemsHtml+='<div class="od-total-row"><span>合计</span><span class="od-total-val">'+order.total+'</span></div></div>';
   var infoHtml='<div class="od-section"><div class="od-section-title">提交信息</div><div class="od-info-row"><span class="od-info-label">🕐 时间</span><span class="od-info-value">'+order.createTime+'</span></div>'+(order.count?('<div class="od-info-row"><span class="od-info-label">📦 件数</span><span class="od-info-value">共'+order.count+'件</span></div>'):'')+'</div>';
